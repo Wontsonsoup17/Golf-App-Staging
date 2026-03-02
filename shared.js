@@ -1,6 +1,6 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed
-var APP_VERSION = '152';
+var APP_VERSION = '153';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -256,6 +256,38 @@ const COURSES = [
       { num:16, par:3, black:200, blue:170, white:147, gold:120, red:127, hcp:18 },
       { num:17, par:5, black:570, blue:530, white:470, gold:423, red:412, hcp:6  },
       { num:18, par:4, black:460, blue:430, white:396, gold:373, red:306, hcp:1  }
+    ]
+  },
+  {
+    id: 'brennan', name: 'E. Gaynor Brennan',
+    address: '451 Stillwater Rd, Stamford, CT 06902', phone: '(203) 324-4185', par: 71,
+    group: 'other',
+    link: 'https://www.brennangolf.com/-hole-by-hole',
+    overview: 'https://cdn.cybergolf.com/images/2019/Course-Overview.jpg',
+    tees: {
+      blue:  { label: 'Blue (Back)',    yards: 5893, rating: 70.0, slope: 124 },
+      white: { label: 'White (Middle)', yards: 5542, rating: 68.6, slope: 120 },
+      red:   { label: 'Red (Forward)',  yards: 5017, rating: 71.4, slope: 122 }
+    },
+    holes: [
+      { num:1,  par:4, blue:360, white:348, red:275, hcp:7,  img:'https://cdn.cybergolf.com/images/2019/Hole-1.jpg' },
+      { num:2,  par:4, blue:392, white:382, red:322, hcp:5,  img:'https://cdn.cybergolf.com/images/2019/Hole-2.jpg' },
+      { num:3,  par:3, blue:147, white:132, red:95,  hcp:13, img:'https://cdn.cybergolf.com/images/2019/Hole-3.jpg' },
+      { num:4,  par:5, blue:460, white:432, red:400, hcp:11, img:'https://cdn.cybergolf.com/images/2019/Hole-4.jpg' },
+      { num:5,  par:4, blue:368, white:355, red:343, hcp:1,  img:'https://cdn.cybergolf.com/images/2019/Hole-5.jpg' },
+      { num:6,  par:5, blue:485, white:433, red:417, hcp:9,  img:'https://cdn.cybergolf.com/images/2019/Hole-6.jpg' },
+      { num:7,  par:4, blue:372, white:350, red:305, hcp:3,  img:'https://cdn.cybergolf.com/images/2019/Hole-7.jpg' },
+      { num:8,  par:4, blue:279, white:267, red:258, hcp:17, img:'https://cdn.cybergolf.com/images/2019/Hole-8.jpg' },
+      { num:9,  par:3, blue:123, white:108, red:93,  hcp:15, img:'https://cdn.cybergolf.com/images/2019/Hole-9.jpg' },
+      { num:10, par:5, blue:454, white:440, red:377, hcp:10, img:'https://cdn.cybergolf.com/images/2019/Hole-10.jpg' },
+      { num:11, par:4, blue:373, white:317, red:300, hcp:4,  img:'https://cdn.cybergolf.com/images/2019/Hole-11.jpg' },
+      { num:12, par:4, blue:312, white:300, red:286, hcp:16, img:'https://cdn.cybergolf.com/images/2019/Hole-12.jpg' },
+      { num:13, par:4, blue:320, white:300, red:290, hcp:8,  img:'https://cdn.cybergolf.com/images/2019/Hole-13.jpg' },
+      { num:14, par:4, blue:345, white:320, red:290, hcp:2,  img:'https://cdn.cybergolf.com/images/2019/Hole-14.jpg' },
+      { num:15, par:3, blue:228, white:218, red:208, hcp:12, img:'https://cdn.cybergolf.com/images/2019/Hole-15.jpg' },
+      { num:16, par:4, blue:398, white:385, red:332, hcp:6,  img:'https://cdn.cybergolf.com/images/2019/Hole-16.jpg' },
+      { num:17, par:3, blue:176, white:160, red:140, hcp:18, img:'https://cdn.cybergolf.com/images/2019/Hole-17.jpg' },
+      { num:18, par:4, blue:301, white:295, red:286, hcp:14, img:'https://cdn.cybergolf.com/images/2019/Hole-18.jpg' }
     ]
   }
 ];
