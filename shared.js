@@ -1,6 +1,6 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed
-var APP_VERSION = '155';
+var APP_VERSION = '156';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -322,6 +322,39 @@ const COURSES = [
       { num:16, par:4, black:324, blue:310, white:300, gold:230, red:229, hcp:16 },
       { num:17, par:3, black:241, blue:230, white:205, gold:164, red:163, hcp:6  },
       { num:18, par:5, black:486, blue:474, white:462, gold:444, red:443, hcp:18 }
+    ]
+  },
+  {
+    id: 'putnam-county', name: 'Putnam County',
+    address: '187 Hill St, Mahopac, NY 10541', phone: '(845) 808-1880', par: 72,
+    group: 'other',
+    link: 'https://www.putnamcountygolfcourse.com/putnam-county-golf-course',
+    overview: '',
+    tees: {
+      blue:  { label: 'Blue',  yards: 6645, rating: 73.3, slope: 129 },
+      white: { label: 'White', yards: 6270, rating: 71.2, slope: 127 },
+      gold:  { label: 'Gold',  yards: 5725, rating: 69.3, slope: 121 },
+      red:   { label: 'Red',   yards: 5585, rating: 72.6, slope: 122 }
+    },
+    holes: [
+      { num:1,  par:5, blue:505, white:485, gold:465, red:460, hcp:15 },
+      { num:2,  par:4, blue:420, white:395, gold:375, red:370, hcp:1  },
+      { num:3,  par:4, blue:395, white:350, gold:315, red:305, hcp:17 },
+      { num:4,  par:5, blue:470, white:460, gold:405, red:400, hcp:11 },
+      { num:5,  par:3, blue:165, white:145, gold:130, red:125, hcp:13 },
+      { num:6,  par:4, blue:325, white:315, gold:300, red:290, hcp:9  },
+      { num:7,  par:3, blue:150, white:135, gold:125, red:120, hcp:7  },
+      { num:8,  par:4, blue:380, white:365, gold:345, red:335, hcp:5  },
+      { num:9,  par:4, blue:375, white:365, gold:290, red:285, hcp:3  },
+      { num:10, par:4, blue:410, white:395, gold:375, red:370, hcp:8  },
+      { num:11, par:4, blue:325, white:315, gold:290, red:275, hcp:18 },
+      { num:12, par:3, blue:185, white:170, gold:150, red:145, hcp:16 },
+      { num:13, par:5, blue:520, white:505, gold:465, red:455, hcp:10 },
+      { num:14, par:4, blue:400, white:365, gold:320, red:310, hcp:14 },
+      { num:15, par:3, blue:195, white:175, gold:150, red:145, hcp:12 },
+      { num:16, par:5, blue:525, white:515, gold:475, red:460, hcp:4  },
+      { num:17, par:4, blue:450, white:400, gold:365, red:360, hcp:6  },
+      { num:18, par:4, blue:450, white:415, gold:385, red:375, hcp:2  }
     ]
   }
 ];
