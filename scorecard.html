@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#0a0f0d}</style>
 <script>
-(function(){var v='154';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='155';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Live Round - Westchester Golf</title>
-<link rel="stylesheet" href="shared.css?v=154">
+<link rel="stylesheet" href="shared.css?v=155">
 </head>
 <body>
 
@@ -41,9 +41,9 @@
 <nav class="bottom-nav" id="bottomNav"></nav>
 <div style="text-align:center;font-size:9px;color:#333;padding:4px;opacity:0.5">v106</div>
 
-<script src="firebase-config.js?v=154"></script>
-<script src="shared.js?v=154"></script>
-<script src="firebase-sync.js?v=154"></script>
+<script src="firebase-config.js?v=155"></script>
+<script src="shared.js?v=155"></script>
+<script src="firebase-sync.js?v=155"></script>
 <script>
   // ==================== SCORE EFFECTS (emoji burst) ====================
   // Defined at script scope so both solo and group modes can access them
@@ -484,7 +484,7 @@
                 <span class="putts-label">Putts <span class="label-emoji">⛳️</span></span>
                 <div class="putt-stepper">
                   <button class="putt-btn p-minus" onclick="adjPutt('${pSafe}', -1)">&minus;</button>
-                  <div class="putt-val">${t.putts[currentHole]}</div>
+                  <div class="putt-val">${t.putts[currentHole] || 0}</div>
                   <button class="putt-btn p-plus" onclick="adjPutt('${pSafe}', 1)">+</button>
                 </div>
               </div>
@@ -492,7 +492,7 @@
                 <span class="putts-label mulligan-label-text">Mulligan <span class="label-emoji">🔄</span></span>
                 <div class="putt-stepper">
                   <button class="putt-btn p-minus mulligan-btn" onclick="adjMulligan('${pSafe}', -1)">&minus;</button>
-                  <div class="putt-val mulligan-val">${t.mulligans[currentHole]}</div>
+                  <div class="putt-val mulligan-val">${t.mulligans[currentHole] || 0}</div>
                   <button class="putt-btn p-plus mulligan-btn" onclick="adjMulligan('${pSafe}', 1)">+</button>
                 </div>
               </div>
@@ -500,7 +500,7 @@
                 <span class="putts-label penalty-label-text">Drop <span class="label-emoji">🫳🏼</span></span>
                 <div class="putt-stepper">
                   <button class="putt-btn p-minus penalty-btn" onclick="adjPenalty('${pSafe}', -1)">&minus;</button>
-                  <div class="putt-val penalty-val">${t.penalties[currentHole]}</div>
+                  <div class="putt-val penalty-val">${t.penalties[currentHole] || 0}</div>
                   <button class="putt-btn p-plus penalty-btn" onclick="adjPenalty('${pSafe}', 1)">+</button>
                 </div>
               </div>
@@ -622,14 +622,15 @@
       currentHole = idx;
       const hole = course.holes[currentHole];
       R.players.forEach(p => {
-        if (R.scores[p][currentHole] === 0) {
+        var isNewHole = R.scores[p][currentHole] === 0;
+        if (isNewHole) {
           R.scores[p][currentHole] = hole.par;
         }
-        // Reset tracking for unplayed holes
-        if (R.tracking[p]) {
-          if (!R.tracking[p].putts[currentHole]) R.tracking[p].putts[currentHole] = 0;
-          if (!R.tracking[p].mulligans[currentHole]) R.tracking[p].mulligans[currentHole] = 0;
-          if (!R.tracking[p].penalties[currentHole]) R.tracking[p].penalties[currentHole] = 0;
+        // Force tracking to 0 for brand-new holes
+        if (R.tracking[p] && isNewHole) {
+          R.tracking[p].putts[currentHole] = 0;
+          R.tracking[p].mulligans[currentHole] = 0;
+          R.tracking[p].penalties[currentHole] = 0;
         }
       });
       save(); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -663,13 +664,13 @@
       if (badge) { badge.className = 'player-total-badge ' + badgeClass; badge.textContent = holesPlayed > 0 ? totalScore + ' (' + badgeText + ')' : '—'; }
 
       const puttVal = card.querySelector('.putt-val');
-      if (puttVal) puttVal.textContent = t.putts[currentHole];
+      if (puttVal) puttVal.textContent = t.putts[currentHole] || 0;
 
       const mulliganVal = card.querySelector('.mulligan-val');
-      if (mulliganVal) mulliganVal.textContent = t.mulligans[currentHole];
+      if (mulliganVal) mulliganVal.textContent = t.mulligans[currentHole] || 0;
 
       const penaltyVal = card.querySelector('.penalty-val');
-      if (penaltyVal) penaltyVal.textContent = t.penalties[currentHole];
+      if (penaltyVal) penaltyVal.textContent = t.penalties[currentHole] || 0;
     }
 
     window.adj = function(player, delta) { R.scores[player][currentHole] = Math.max(1, Math.min(15, R.scores[player][currentHole] + delta)); save(); updateSoloCard(player); };
@@ -1085,7 +1086,7 @@
         html += '<span class="putts-label">Putts <span class="label-emoji">⛳️</span></span>';
         html += '<div class="putt-stepper">';
         html += `<button class="putt-btn p-minus" onclick="adjPutt(-1)">&minus;</button>`;
-        html += `<div class="putt-val">${t.putts[currentHole]}</div>`;
+        html += `<div class="putt-val">${t.putts[currentHole] || 0}</div>`;
         html += `<button class="putt-btn p-plus" onclick="adjPutt(1)">+</button>`;
         html += '</div></div>';
 
@@ -1093,7 +1094,7 @@
         html += '<span class="putts-label mulligan-label-text">Mulligan <span class="label-emoji">🔄</span></span>';
         html += '<div class="putt-stepper">';
         html += `<button class="putt-btn p-minus mulligan-btn" onclick="adjMulligan(-1)">&minus;</button>`;
-        html += `<div class="putt-val mulligan-val">${t.mulligans[currentHole]}</div>`;
+        html += `<div class="putt-val mulligan-val">${t.mulligans[currentHole] || 0}</div>`;
         html += `<button class="putt-btn p-plus mulligan-btn" onclick="adjMulligan(1)">+</button>`;
         html += '</div></div>';
 
@@ -1101,7 +1102,7 @@
         html += '<span class="putts-label penalty-label-text">Drop <span class="label-emoji">🫳🏼</span></span>';
         html += '<div class="putt-stepper">';
         html += `<button class="putt-btn p-minus penalty-btn" onclick="adjPenalty(-1)">&minus;</button>`;
-        html += `<div class="putt-val penalty-val">${t.penalties[currentHole]}</div>`;
+        html += `<div class="putt-val penalty-val">${t.penalties[currentHole] || 0}</div>`;
         html += `<button class="putt-btn p-plus penalty-btn" onclick="adjPenalty(1)">+</button>`;
         html += '</div></div>';
 
@@ -1203,7 +1204,7 @@
       const myName = R._uidToName[user.uid];
       if (!myName) return;
       const mulliganVal = document.querySelector('.mulligan-val');
-      if (mulliganVal) mulliganVal.textContent = R.tracking[myName].mulligans[currentHole];
+      if (mulliganVal) mulliganVal.textContent = R.tracking[myName].mulligans[currentHole] || 0;
     }
 
     function updatePenaltyDisplay() {
@@ -1211,7 +1212,7 @@
       const myName = R._uidToName[user.uid];
       if (!myName) return;
       const penaltyVal = document.querySelector('.penalty-val');
-      if (penaltyVal) penaltyVal.textContent = R.tracking[myName].penalties[currentHole];
+      if (penaltyVal) penaltyVal.textContent = R.tracking[myName].penalties[currentHole] || 0;
     }
 
     function updatePuttDisplay() {
@@ -1219,7 +1220,7 @@
       const myName = R._uidToName[user.uid];
       if (!myName) return;
       const puttVal = document.querySelector('.putt-val');
-      if (puttVal) puttVal.textContent = R.tracking[myName].putts[currentHole];
+      if (puttVal) puttVal.textContent = R.tracking[myName].putts[currentHole] || 0;
     }
 
     // ===== Group actions (write to Firebase per-UID) =====
@@ -1281,9 +1282,13 @@
       var myName = R._uidToName ? R._uidToName[user.uid] : null;
       if (!myName || !R.tracking[myName]) return;
       var t = R.tracking[myName];
-      if (!t.putts[holeIdx]) t.putts[holeIdx] = 0;
-      if (!t.mulligans[holeIdx]) t.mulligans[holeIdx] = 0;
-      if (!t.penalties[holeIdx]) t.penalties[holeIdx] = 0;
+      // Only force reset if this is a brand-new hole (no score yet)
+      var isNewHole = !R.scores[myName] || R.scores[myName][holeIdx] === 0 || R.scores[myName][holeIdx] === undefined;
+      if (isNewHole) {
+        t.putts[holeIdx] = 0;
+        t.mulligans[holeIdx] = 0;
+        t.penalties[holeIdx] = 0;
+      }
     }
 
     function proceedToHoleGroup(idx) {
