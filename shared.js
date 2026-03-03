@@ -1,6 +1,6 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed
-var APP_VERSION = '153';
+var APP_VERSION = '154';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -288,6 +288,40 @@ const COURSES = [
       { num:16, par:4, blue:398, white:385, red:332, hcp:6,  img:'https://cdn.cybergolf.com/images/2019/Hole-16.jpg' },
       { num:17, par:3, blue:176, white:160, red:140, hcp:18, img:'https://cdn.cybergolf.com/images/2019/Hole-17.jpg' },
       { num:18, par:4, blue:301, white:295, red:286, hcp:14, img:'https://cdn.cybergolf.com/images/2019/Hole-18.jpg' }
+    ]
+  },
+  {
+    id: 'sterling-farms', name: 'Sterling Farms',
+    address: '1349 Newfield Ave, Stamford, CT 06905', phone: '(203) 461-9090', par: 72,
+    group: 'other',
+    link: 'https://www.sterlingfarmsgc.com/-course-detailsscorecard',
+    overview: '',
+    tees: {
+      black: { label: 'Black', yards: 6423, rating: 71.5, slope: 134 },
+      blue:  { label: 'Blue',  yards: 6227, rating: 70.4, slope: 132 },
+      white: { label: 'White', yards: 5899, rating: 69.3, slope: 126 },
+      gold:  { label: 'Gold',  yards: 5423, rating: 66.4, slope: 121 },
+      red:   { label: 'Red',   yards: 5402, rating: 71.4, slope: 122 }
+    },
+    holes: [
+      { num:1,  par:4, black:364, blue:350, white:330, gold:310, red:309, hcp:11 },
+      { num:2,  par:5, black:520, blue:503, white:480, gold:460, red:459, hcp:15 },
+      { num:3,  par:4, black:327, blue:318, white:302, gold:285, red:284, hcp:17 },
+      { num:4,  par:4, black:350, blue:337, white:320, gold:296, red:294, hcp:1  },
+      { num:5,  par:3, black:224, blue:214, white:190, gold:172, red:171, hcp:7  },
+      { num:6,  par:5, black:444, blue:434, white:423, gold:402, red:396, hcp:13 },
+      { num:7,  par:4, black:390, blue:380, white:360, gold:342, red:342, hcp:9  },
+      { num:8,  par:3, black:205, blue:197, white:183, gold:168, red:167, hcp:3  },
+      { num:9,  par:4, black:370, blue:366, white:340, gold:326, red:325, hcp:5  },
+      { num:10, par:4, black:410, blue:394, white:378, gold:368, red:366, hcp:12 },
+      { num:11, par:4, black:378, blue:366, white:334, gold:286, red:286, hcp:10 },
+      { num:12, par:4, black:350, blue:342, white:334, gold:320, red:319, hcp:4  },
+      { num:13, par:5, black:487, blue:480, white:447, gold:365, red:365, hcp:8  },
+      { num:14, par:4, black:399, blue:387, white:373, gold:355, red:354, hcp:2  },
+      { num:15, par:3, black:154, blue:145, white:138, gold:130, red:130, hcp:14 },
+      { num:16, par:4, black:324, blue:310, white:300, gold:230, red:229, hcp:16 },
+      { num:17, par:3, black:241, blue:230, white:205, gold:164, red:163, hcp:6  },
+      { num:18, par:5, black:486, blue:474, white:462, gold:444, red:443, hcp:18 }
     ]
   }
 ];
