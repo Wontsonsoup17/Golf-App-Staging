@@ -186,6 +186,44 @@
       var hasMulligans = hasTracking && round.players.some(p => round.tracking[p] && round.tracking[p].mulligans && round.tracking[p].mulligans.some(v => v > 0));
       var hasDrops = hasTracking && round.players.some(p => round.tracking[p] && round.tracking[p].penalties && round.tracking[p].penalties.some(v => v > 0));
 
+      // Helper: build tracking sub-text for a hole cell
+      function holeTrackingHtml(p, i) {
+        if (!hasTracking) return '';
+        var t = round.tracking && round.tracking[p];
+        if (!t) return '';
+        var parts = [];
+        var pv = t.putts ? (t.putts[i] || 0) : 0;
+        if (pv > 0) {
+          var pc = pv === 1 ? 'var(--birdie)' : pv >= 3 ? 'var(--bogey)' : 'var(--text-muted)';
+          parts.push('<span style="color:' + pc + '">' + pv + 'p</span>');
+        }
+        var mv = t.mulligans ? (t.mulligans[i] || 0) : 0;
+        if (mv > 0) parts.push('<span style="color:#ff9800">' + mv + 'm</span>');
+        var dv = t.penalties ? (t.penalties[i] || 0) : 0;
+        if (dv > 0) parts.push('<span style="color:var(--bogey)">' + dv + 'd</span>');
+        if (!parts.length) return '';
+        return '<div style="font-size:9px;line-height:1;margin-top:1px">' + parts.join(' ') + '</div>';
+      }
+
+      // Helper: build tracking sub-text for a subtotal/total cell (range of holes)
+      function rangeTrackingHtml(p, start, end) {
+        if (!hasTracking) return '';
+        var t = round.tracking && round.tracking[p];
+        if (!t) return '';
+        var tp = 0, tm = 0, td = 0;
+        for (var ri = start; ri < end; ri++) {
+          tp += t.putts ? (t.putts[ri] || 0) : 0;
+          tm += t.mulligans ? (t.mulligans[ri] || 0) : 0;
+          td += t.penalties ? (t.penalties[ri] || 0) : 0;
+        }
+        var parts = [];
+        if (tp > 0) parts.push(tp + 'p');
+        if (tm > 0) parts.push('<span style="color:#ff9800">' + tm + 'm</span>');
+        if (td > 0) parts.push('<span style="color:var(--bogey)">' + td + 'd</span>');
+        if (!parts.length) return '';
+        return '<div style="font-size:9px;line-height:1;margin-top:1px;color:var(--text-muted)">' + parts.join(' ') + '</div>';
+      }
+
       html += '<table class="detail-table"><tr><th class="hole-col">Hole</th><th>Par</th>';
       round.players.forEach(p => {
         const hp = round.scores[p].filter(s => s > 0).length;
@@ -196,7 +234,7 @@
       for (let i = 0; i < 18; i++) {
         if (i === 9) {
           html += '<tr class="nine-total"><td class="hole-col">OUT</td><td>' + round.holePars.slice(0,9).reduce((a,b)=>a+b,0) + '</td>';
-          round.players.forEach(p => html += '<td>' + (round.scores[p].slice(0,9).reduce((a,b)=>a+b,0)||'-') + '</td>');
+          round.players.forEach(p => html += '<td>' + (round.scores[p].slice(0,9).reduce((a,b)=>a+b,0)||'-') + rangeTrackingHtml(p, 0, 9) + '</td>');
           html += '</tr>';
         }
         html += '<tr><td class="hole-col">' + (i+1) + '</td><td>' + round.holePars[i] + '</td>';
@@ -213,12 +251,12 @@
           } else {
             style = 'color:var(--text-muted);opacity:0.4';
           }
-          html += '<td style="' + style + '">' + (s > 0 ? s : '—') + '</td>';
+          html += '<td style="' + style + '">' + (s > 0 ? s : '—') + holeTrackingHtml(p, i) + '</td>';
         });
         html += '</tr>';
       }
       html += '<tr class="nine-total"><td class="hole-col">IN</td><td>' + round.holePars.slice(9).reduce((a,b)=>a+b,0) + '</td>';
-      round.players.forEach(p => html += '<td>' + (round.scores[p].slice(9).reduce((a,b)=>a+b,0)||'-') + '</td>');
+      round.players.forEach(p => html += '<td>' + (round.scores[p].slice(9).reduce((a,b)=>a+b,0)||'-') + rangeTrackingHtml(p, 9, 18) + '</td>');
       html += '</tr>';
 
       // Total row — show actual par played for incomplete rounds
@@ -229,95 +267,9 @@
         const parPlayed = round.holePars.filter((hp, i) => round.scores[p][i] > 0).reduce((a, b) => a + b, 0);
         const diff = total - parPlayed;
         const diffStr = holesPlayed === 0 ? '—' : (diff === 0 ? 'E' : (diff > 0 ? '+' + diff : diff.toString()));
-        html += '<td>' + total + ' <span style="font-size:11px;color:var(--text-muted)">(' + diffStr + ')</span></td>';
+        html += '<td>' + total + ' <span style="font-size:11px;color:var(--text-muted)">(' + diffStr + ')</span>' + rangeTrackingHtml(p, 0, 18) + '</td>';
       });
       html += '</tr></table>';
-
-      // Tracking details section (putts, mulligans, drops per hole)
-      if (hasPutts || hasMulligans || hasDrops) {
-        html += '<div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px">';
-        html += '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Tracking Details</div>';
-        html += '<table class="detail-table">';
-
-        // Header row
-        html += '<tr><th class="hole-col">Hole</th>';
-        for (var hi = 1; hi <= 18; hi++) {
-          if (hi === 10) html += '<th style="font-size:10px;color:var(--text-muted)">OUT</th>';
-          html += '<th>' + hi + '</th>';
-        }
-        html += '<th style="font-size:10px;color:var(--text-muted)">IN</th><th style="font-size:10px;color:var(--gold);font-weight:700">TOT</th></tr>';
-
-        // Per-player tracking rows
-        round.players.forEach(function(p) {
-          var t = round.tracking && round.tracking[p];
-          if (!t) return;
-
-          var playerHasData = (t.putts && t.putts.some(v => v > 0)) || (t.mulligans && t.mulligans.some(v => v > 0)) || (t.penalties && t.penalties.some(v => v > 0));
-          if (!playerHasData) return;
-
-          // Player name header spanning all columns
-          var totalCols = 21; // 1 label + 9 front + OUT + 9 back + IN + TOT
-          html += '<tr><td colspan="' + totalCols + '" style="text-align:left;font-weight:600;color:var(--text-light);padding:8px 6px 2px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">' + p + '</td></tr>';
-
-          // Putts row
-          if (t.putts && t.putts.some(v => v > 0)) {
-            html += '<tr><td class="hole-col" style="font-size:10px;color:var(--text-muted)">Putts</td>';
-            var puttsFront = 0, puttsBack = 0;
-            for (var pi = 0; pi < 18; pi++) {
-              if (pi === 9) {
-                html += '<td style="font-size:10px;color:var(--text-muted);font-weight:600">' + puttsFront + '</td>';
-              }
-              var pv = t.putts[pi] || 0;
-              if (pi < 9) puttsFront += pv; else puttsBack += pv;
-              html += '<td style="font-size:11px;color:' + (pv === 0 ? 'var(--text-muted);opacity:0.3' : pv === 1 ? 'var(--birdie)' : pv >= 3 ? 'var(--bogey)' : 'var(--text-light)') + '">' + (pv > 0 ? pv : '—') + '</td>';
-            }
-            html += '<td style="font-size:10px;color:var(--text-muted);font-weight:600">' + puttsBack + '</td>';
-            html += '<td style="font-size:11px;color:var(--gold);font-weight:700">' + (puttsFront + puttsBack) + '</td></tr>';
-          }
-
-          // Mulligans row
-          if (t.mulligans && t.mulligans.some(v => v > 0)) {
-            html += '<tr><td class="hole-col" style="font-size:10px;color:var(--text-muted)">Mull.</td>';
-            var mullFront = 0, mullBack = 0;
-            for (var mi = 0; mi < 18; mi++) {
-              if (mi === 9) {
-                html += '<td style="font-size:10px;color:var(--text-muted);font-weight:600">' + mullFront + '</td>';
-              }
-              var mv = t.mulligans[mi] || 0;
-              if (mi < 9) mullFront += mv; else mullBack += mv;
-              var mullTip = '';
-              if (mv > 0 && t.mulliganLocations && t.mulliganLocations[mi] && Array.isArray(t.mulliganLocations[mi])) {
-                mullTip = ' title="' + t.mulliganLocations[mi].join(', ') + '"';
-              }
-              html += '<td style="font-size:11px;color:' + (mv === 0 ? 'var(--text-muted);opacity:0.3' : 'var(--mulligan-color, #ff9800)') + '"' + mullTip + '>' + (mv > 0 ? mv : '—') + '</td>';
-            }
-            html += '<td style="font-size:10px;color:var(--text-muted);font-weight:600">' + mullBack + '</td>';
-            html += '<td style="font-size:11px;color:var(--mulligan-color, #ff9800);font-weight:700">' + (mullFront + mullBack) + '</td></tr>';
-          }
-
-          // Drops row
-          if (t.penalties && t.penalties.some(v => v > 0)) {
-            html += '<tr><td class="hole-col" style="font-size:10px;color:var(--text-muted)">Drops</td>';
-            var dropFront = 0, dropBack = 0;
-            for (var di = 0; di < 18; di++) {
-              if (di === 9) {
-                html += '<td style="font-size:10px;color:var(--text-muted);font-weight:600">' + dropFront + '</td>';
-              }
-              var dv = t.penalties[di] || 0;
-              if (di < 9) dropFront += dv; else dropBack += dv;
-              var dropTip = '';
-              if (dv > 0 && t.penaltyLocations && t.penaltyLocations[di] && Array.isArray(t.penaltyLocations[di])) {
-                dropTip = ' title="' + t.penaltyLocations[di].join(', ') + '"';
-              }
-              html += '<td style="font-size:11px;color:' + (dv === 0 ? 'var(--text-muted);opacity:0.3' : 'var(--bogey)') + '"' + dropTip + '>' + (dv > 0 ? dv : '—') + '</td>';
-            }
-            html += '<td style="font-size:10px;color:var(--text-muted);font-weight:600">' + dropBack + '</td>';
-            html += '<td style="font-size:11px;color:var(--bogey);font-weight:700">' + (dropFront + dropBack) + '</td></tr>';
-          }
-        });
-
-        html += '</table></div>';
-      }
 
       document.getElementById('detailContent').innerHTML = html;
       document.getElementById('detailModal').classList.add('show');
