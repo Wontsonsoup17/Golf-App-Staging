@@ -252,7 +252,10 @@ _firebaseLoadPromise = new Promise(function(resolve) {
 
 // *** FIREBASE CONFIG ***
 var FIREBASE_CONFIG = {
-  databaseURL: "https://westchester-golf-app-default-rtdb.firebaseio.com"
+  apiKey: "AIzaSyCca3qFg0zgHwOWowzLqmMPSoCy-ybDNoI",
+  authDomain: "westchester-golf-app.firebaseapp.com",
+  databaseURL: "https://westchester-golf-app-default-rtdb.firebaseio.com",
+  projectId: "westchester-golf-app"
 };
 
 (function loadFirebaseSDK() {
@@ -260,24 +263,54 @@ var FIREBASE_CONFIG = {
   s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
   s1.onload = function() {
     window._fbSDK = window.firebase;
-    var s2 = document.createElement('script');
-    s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
-    s2.onload = function() {
-      try {
-        window._fbSDK.initializeApp(FIREBASE_CONFIG);
-        _firebaseDB = window._fbSDK.database();
-        _firebaseReady = true;
-        console.log('[Firebase] Connected to real-time database');
-      } catch(e) {
-        console.warn('[Firebase] Init failed:', e.message);
-      }
-      _firebaseLoadResolve();
+    // Load Auth SDK first, then Database SDK
+    var s1b = document.createElement('script');
+    s1b.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js';
+    s1b.onload = function() {
+      var s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+      s2.onload = function() {
+        try {
+          window._fbSDK.initializeApp(FIREBASE_CONFIG);
+          _firebaseDB = window._fbSDK.database();
+          _firebaseReady = true;
+          console.log('[Firebase] Connected to real-time database');
+          // Sign in anonymously so security rules (auth != null) are satisfied
+          window._fbSDK.auth().signInAnonymously().then(function() {
+            console.log('[Firebase] Anonymous auth OK');
+          }).catch(function(e) {
+            console.warn('[Firebase] Anonymous auth failed:', e.message);
+          });
+        } catch(e) {
+          console.warn('[Firebase] Init failed:', e.message);
+        }
+        _firebaseLoadResolve();
+      };
+      s2.onerror = function() {
+        console.warn('[Firebase] DB SDK load failed');
+        _firebaseLoadResolve();
+      };
+      document.head.appendChild(s2);
     };
-    s2.onerror = function() {
-      console.warn('[Firebase] DB SDK load failed');
-      _firebaseLoadResolve();
+    s1b.onerror = function() {
+      // Auth SDK failed — still try to load DB SDK without auth
+      console.warn('[Firebase] Auth SDK load failed, continuing without auth');
+      var s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+      s2.onload = function() {
+        try {
+          window._fbSDK.initializeApp(FIREBASE_CONFIG);
+          _firebaseDB = window._fbSDK.database();
+          _firebaseReady = true;
+        } catch(e) {
+          console.warn('[Firebase] Init failed:', e.message);
+        }
+        _firebaseLoadResolve();
+      };
+      s2.onerror = function() { _firebaseLoadResolve(); };
+      document.head.appendChild(s2);
     };
-    document.head.appendChild(s2);
+    document.head.appendChild(s1b);
   };
   s1.onerror = function() {
     console.warn('[Firebase] App SDK load failed');
