@@ -1,6 +1,6 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed
-var APP_VERSION = '158';
+var APP_VERSION = '159';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -21,6 +21,51 @@ var APP_VERSION = '158';
     localStorage.setItem('app_version', APP_VERSION);
   }
 })();
+
+// ==================== FIREBASE VERSION CHECK ====================
+// Checks Firebase for the required minimum version. If the user's
+// local version is outdated, shows a blocking modal, signs them out,
+// and sends them to force-update.html.
+window.checkRequiredVersion = function() {
+  if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
+  _firebaseDB.ref('config/requiredVersion').once('value').then(function(snap) {
+    if (!snap.exists()) return;
+    var required = parseInt(snap.val(), 10);
+    var local = parseInt(APP_VERSION, 10);
+    if (isNaN(required) || isNaN(local)) return;
+    if (local >= required) return;
+
+    // Outdated — show blocking modal
+    var old = document.getElementById('versionUpdateModal');
+    if (old) return; // already showing
+
+    var modal = document.createElement('div');
+    modal.id = 'versionUpdateModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+    modal.innerHTML =
+      '<div style="background:var(--card-bg,#1a2e1a);border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:32px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
+        '<div style="font-size:48px;margin-bottom:12px">&#x1F504;</div>' +
+        '<h3 style="color:#fff;font-size:20px;margin-bottom:8px">Update Required</h3>' +
+        '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.5;margin-bottom:24px">A new version of Westchester Golf is available. Please update to continue using the app.</p>' +
+        '<button onclick="forceVersionUpdate()" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer">Update Now</button>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }).catch(function() {});
+};
+
+window.forceVersionUpdate = function() {
+  // Sign out and redirect to force-update
+  if (typeof auth !== 'undefined' && auth.signOut) {
+    auth.signOut().then(function() {
+      window.location.href = 'force-update.html';
+    }).catch(function() {
+      window.location.href = 'force-update.html';
+    });
+  } else {
+    localStorage.removeItem('wg-session');
+    window.location.href = 'force-update.html';
+  }
+};
 
 // ==================== SERVICE WORKER ====================
 // Registers on EVERY page load — forces network-first for all HTML/JS/CSS

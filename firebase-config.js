@@ -651,6 +651,10 @@ function requireAuth(callback) {
     if (!user) { window.location.href = 'login.html'; }
     else {
       callback(user);
+      // Check for required version update
+      setTimeout(function() {
+        if (typeof checkRequiredVersion === 'function') checkRequiredVersion();
+      }, 500);
       // Prompt for security question setup after page loads
       setTimeout(function() {
         if (typeof checkSecurityQuestionPrompt === 'function') checkSecurityQuestionPrompt();
