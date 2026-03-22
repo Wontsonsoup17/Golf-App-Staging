@@ -236,6 +236,113 @@ function changeUsername(newUsername) {
   });
 }
 
+// ==================== SECURITY QUESTION ====================
+
+var SECURITY_QUESTIONS = [
+  "What is your favorite golf course?",
+  "What was the name of your first pet?",
+  "What city were you born in?",
+  "What is your mother's maiden name?",
+  "What is your favorite sports team?",
+  "What street did you grow up on?"
+];
+
+function setSecurityQuestion(questionIndex, answer) {
+  var user = auth.currentUser;
+  if (!user) return Promise.reject({ message: 'Not signed in.' });
+  var username = (user.email || '').split('@')[0].toLowerCase();
+  if (!username) return Promise.reject({ message: 'Cannot determine username.' });
+  if (questionIndex < 0 || questionIndex >= SECURITY_QUESTIONS.length) return Promise.reject({ message: 'Invalid question.' });
+  if (!answer || !answer.trim()) return Promise.reject({ message: 'Please provide an answer.' });
+
+  var answerHash = simpleHash(answer.trim().toLowerCase());
+  var secData = { securityQuestion: questionIndex, securityAnswer: answerHash };
+
+  // Update local
+  var users = getLocalUsers();
+  if (users[username]) {
+    users[username].securityQuestion = questionIndex;
+    users[username].securityAnswer = answerHash;
+    saveLocalUsers(users);
+  }
+
+  // Update Firebase
+  return Promise.all([
+    db.ref('credentials/' + username + '/securityQuestion').set(questionIndex),
+    db.ref('credentials/' + username + '/securityAnswer').set(answerHash)
+  ]).then(function() {
+    return { success: true };
+  }).catch(function() {
+    return { success: true };
+  });
+}
+
+function getSecurityQuestion(username) {
+  username = username.toLowerCase().trim();
+  // Try local first
+  var users = getLocalUsers();
+  if (users[username] && users[username].securityQuestion !== undefined) {
+    return Promise.resolve({
+      hasQuestion: true,
+      questionIndex: users[username].securityQuestion,
+      questionText: SECURITY_QUESTIONS[users[username].securityQuestion]
+    });
+  }
+  // Try Firebase
+  return db.ref('credentials/' + username).once('value').then(function(snap) {
+    if (!snap.exists()) return { hasQuestion: false, error: 'Account not found.' };
+    var cred = snap.val();
+    if (cred.securityQuestion === undefined) return { hasQuestion: false };
+    return {
+      hasQuestion: true,
+      questionIndex: cred.securityQuestion,
+      questionText: SECURITY_QUESTIONS[cred.securityQuestion]
+    };
+  });
+}
+
+function resetPasswordWithSecurityQuestion(username, answer, newPassword) {
+  username = username.toLowerCase().trim();
+  if (!answer || !answer.trim()) return Promise.reject({ message: 'Please provide an answer.' });
+  if (!newPassword || newPassword.length < 6) return Promise.reject({ message: 'New password must be at least 6 characters.' });
+
+  var answerHash = simpleHash(answer.trim().toLowerCase());
+
+  return db.ref('credentials/' + username).once('value').then(function(snap) {
+    if (!snap.exists()) return Promise.reject({ message: 'Account not found.' });
+    var cred = snap.val();
+    if (cred.securityQuestion === undefined) return Promise.reject({ message: 'No security question set for this account.' });
+    if (cred.securityAnswer !== answerHash) return Promise.reject({ message: 'Incorrect answer.' });
+
+    // Reset password
+    var newHash = simpleHash(newPassword);
+    cred.passwordHash = newHash;
+
+    // Update local
+    var users = getLocalUsers();
+    if (users[username]) {
+      users[username].passwordHash = newHash;
+      saveLocalUsers(users);
+    }
+
+    // Update Firebase
+    return db.ref('credentials/' + username + '/passwordHash').set(newHash).then(function() {
+      return { success: true };
+    });
+  });
+}
+
+function hasSecurityQuestionSet(username) {
+  username = username.toLowerCase().trim();
+  var users = getLocalUsers();
+  if (users[username] && users[username].securityQuestion !== undefined) {
+    return Promise.resolve(true);
+  }
+  return db.ref('credentials/' + username + '/securityQuestion').once('value').then(function(snap) {
+    return snap.exists();
+  }).catch(function() { return false; });
+}
+
 // ==================== REAL FIREBASE FOR GROUP ROUNDS ====================
 // Loads Firebase SDK dynamically. Only activeRounds paths use real Firebase.
 // Everything else (auth, user data, stats) stays in localStorage.
@@ -542,7 +649,14 @@ function onAuthReady(callback) {
 }
 function requireAuth(callback) {
   onAuthReady(function(user) {
-    if (!user) { window.location.href = 'login.html'; } else { callback(user); }
+    if (!user) { window.location.href = 'login.html'; }
+    else {
+      callback(user);
+      // Prompt for security question setup after page loads
+      setTimeout(function() {
+        if (typeof checkSecurityQuestionPrompt === 'function') checkSecurityQuestionPrompt();
+      }, 1500);
+    }
   });
 }
 function getCurrentUser() { return auth.currentUser; }

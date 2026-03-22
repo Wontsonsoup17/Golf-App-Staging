@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#0a0f0d}</style>
 <script>
-(function(){var v='158';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='159';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Sign In - Westchester Golf</title>
-<link rel="stylesheet" href="shared.css?v=158">
+<link rel="stylesheet" href="shared.css?v=159">
 </head>
 <body>
 
@@ -47,6 +47,46 @@
         <input type="password" id="signinPassword" placeholder="Your password" autocomplete="current-password">
       </div>
       <button class="btn-gold" id="signinBtn" onclick="handleSignIn()">Sign In</button>
+      <div style="text-align:center;margin-top:12px">
+        <a href="#" onclick="showForgotPassword();return false" style="font-size:12px;color:var(--gold);text-decoration:none">Forgot Password?</a>
+      </div>
+    </div>
+
+    <!-- Forgot Password Flow -->
+    <div id="forgotForm" style="display:none">
+      <!-- Step 1: Enter username -->
+      <div id="forgotStep1">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Enter your username to reset your password.</p>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="forgotUsername" placeholder="Your username" maxlength="20" autocapitalize="none">
+        </div>
+        <button class="btn-gold" id="forgotLookupBtn" onclick="handleForgotLookup()">Continue</button>
+        <div style="text-align:center;margin-top:12px">
+          <a href="#" onclick="backToSignIn();return false" style="font-size:12px;color:var(--text-muted);text-decoration:none">&larr; Back to Sign In</a>
+        </div>
+      </div>
+      <!-- Step 2: Answer security question -->
+      <div id="forgotStep2" style="display:none">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Security Question:</p>
+        <p id="forgotQuestionText" style="font-size:14px;color:var(--text-light);font-weight:600;margin-bottom:16px"></p>
+        <div class="form-group">
+          <label>Your Answer</label>
+          <input type="text" id="forgotAnswer" placeholder="Enter your answer" autocapitalize="none">
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="forgotNewPw" placeholder="At least 6 characters">
+        </div>
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <input type="password" id="forgotConfirmPw" placeholder="Confirm new password">
+        </div>
+        <button class="btn-gold" id="forgotResetBtn" onclick="handleForgotReset()">Reset Password</button>
+        <div style="text-align:center;margin-top:12px">
+          <a href="#" onclick="backToSignIn();return false" style="font-size:12px;color:var(--text-muted);text-decoration:none">&larr; Back to Sign In</a>
+        </div>
+      </div>
     </div>
 
     <!-- Sign Up Form -->
@@ -63,6 +103,17 @@
       <div class="form-group">
         <label>Confirm Password</label>
         <input type="password" id="signupConfirm" placeholder="Confirm your password" autocomplete="new-password">
+      </div>
+      <!-- Security Question -->
+      <div class="form-group">
+        <label>Security Question</label>
+        <select id="signupSecurityQ" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-light);font-size:14px;appearance:none;-webkit-appearance:none">
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Security Answer</label>
+        <input type="text" id="signupSecurityA" placeholder="Your answer (case-insensitive)" autocapitalize="none">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Used to reset your password if you forget it</div>
       </div>
       <!-- Optional profile photo -->
       <div class="form-group" style="text-align:center">
@@ -84,11 +135,91 @@
   </div>
 </div>
 
-<script src="firebase-config.js?v=158"></script>
-<script src="shared.js?v=158"></script>
+<script src="firebase-config.js?v=159"></script>
+<script src="shared.js?v=159"></script>
 <script>
   let signingUp = false;
   let pendingAvatarData = null;
+  let forgotUsername = '';
+
+  // Populate security question dropdowns
+  (function() {
+    var sel = document.getElementById('signupSecurityQ');
+    if (sel && typeof SECURITY_QUESTIONS !== 'undefined') {
+      SECURITY_QUESTIONS.forEach(function(q, i) {
+        var opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = q;
+        sel.appendChild(opt);
+      });
+    }
+  })();
+
+  function showForgotPassword() {
+    clearError();
+    document.getElementById('signinForm').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'none';
+    document.getElementById('forgotForm').style.display = '';
+    document.getElementById('forgotStep1').style.display = '';
+    document.getElementById('forgotStep2').style.display = 'none';
+    document.querySelectorAll('.auth-tab').forEach(function(t) { t.classList.remove('active'); });
+  }
+
+  function backToSignIn() {
+    clearError();
+    document.getElementById('forgotForm').style.display = 'none';
+    document.getElementById('signinForm').style.display = '';
+    document.querySelectorAll('.auth-tab')[0].classList.add('active');
+  }
+
+  function handleForgotLookup() {
+    clearError();
+    var username = document.getElementById('forgotUsername').value.trim();
+    if (!username) { showError('Please enter your username.'); return; }
+
+    var btn = document.getElementById('forgotLookupBtn');
+    setLoading(btn, true);
+
+    getSecurityQuestion(username).then(function(result) {
+      setLoading(btn, false);
+      if (result.error) { showError(result.error); return; }
+      if (!result.hasQuestion) {
+        showError('No security question set for this account. Contact an admin to reset your password.');
+        return;
+      }
+      forgotUsername = username;
+      document.getElementById('forgotQuestionText').textContent = result.questionText;
+      document.getElementById('forgotStep1').style.display = 'none';
+      document.getElementById('forgotStep2').style.display = '';
+    }).catch(function(err) {
+      setLoading(btn, false);
+      showError(err.message || 'Could not look up account.');
+    });
+  }
+
+  function handleForgotReset() {
+    clearError();
+    var answer = document.getElementById('forgotAnswer').value;
+    var newPw = document.getElementById('forgotNewPw').value;
+    var confirmPw = document.getElementById('forgotConfirmPw').value;
+
+    if (!answer) { showError('Please enter your security answer.'); return; }
+    if (newPw.length < 6) { showError('New password must be at least 6 characters.'); return; }
+    if (newPw !== confirmPw) { showError('Passwords do not match.'); return; }
+
+    var btn = document.getElementById('forgotResetBtn');
+    setLoading(btn, true);
+
+    resetPasswordWithSecurityQuestion(forgotUsername, answer, newPw).then(function() {
+      setLoading(btn, false);
+      alert('Password reset successfully! You can now sign in.');
+      backToSignIn();
+      document.getElementById('signinUsername').value = forgotUsername;
+    }).catch(function(err) {
+      setLoading(btn, false);
+      showError(err.message || 'Could not reset password.');
+    });
+  }
 
   function previewSignupAvatar(input) {
     var file = input.files && input.files[0];
@@ -117,6 +248,7 @@
   function switchTab(tab) {
     document.getElementById('signinForm').style.display = tab === 'signin' ? '' : 'none';
     document.getElementById('signupForm').style.display = tab === 'signup' ? '' : 'none';
+    document.getElementById('forgotForm').style.display = 'none';
     document.querySelectorAll('.auth-tab').forEach((btn, i) => {
       btn.classList.toggle('active', (tab === 'signin' && i === 0) || (tab === 'signup' && i === 1));
     });
@@ -177,10 +309,14 @@
     const password = document.getElementById('signupPassword').value;
     const confirm = document.getElementById('signupConfirm').value;
 
+    const securityQ = parseInt(document.getElementById('signupSecurityQ').value);
+    const securityA = document.getElementById('signupSecurityA').value.trim();
+
     if (!username) { showError('Please choose a username.'); return; }
     if (!isValidUsername(username)) { showError('Username must be 2-20 characters: letters, numbers, underscores only.'); return; }
     if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
     if (password !== confirm) { showError('Passwords do not match.'); return; }
+    if (!securityA) { showError('Please provide a security answer for password recovery.'); return; }
 
     const btn = document.getElementById('signupBtn');
     setLoading(btn, true);
@@ -222,6 +358,14 @@
               })
             ]);
           });
+        })
+        .then(() => {
+          // Save security question
+          var answerHash = simpleHash(securityA.toLowerCase());
+          return Promise.all([
+            db.ref('credentials/' + username.toLowerCase() + '/securityQuestion').set(securityQ),
+            db.ref('credentials/' + username.toLowerCase() + '/securityAnswer').set(answerHash)
+          ]).catch(function() {});
         })
         .then(() => {
           if (pendingAvatarData) {

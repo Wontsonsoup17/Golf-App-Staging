@@ -516,6 +516,7 @@ function renderUserHeader(user) {
       '<button class="profile-menu-item" onclick="handleChangePhoto()"><span class="menu-icon">&#128247;</span> Change Photo</button>' +
       '<button class="profile-menu-item" onclick="handleChangeUsernameModal()"><span class="menu-icon">&#9998;</span> Change Username</button>' +
       '<button class="profile-menu-item" onclick="handleChangePasswordModal()"><span class="menu-icon">&#128274;</span> Change Password</button>' +
+      '<button class="profile-menu-item" onclick="handleSecurityQuestionModal()"><span class="menu-icon">&#128737;</span> Security Question</button>' +
       '<div class="profile-menu-separator"></div>' +
       '<button class="profile-menu-item danger" onclick="signOut()"><span class="menu-icon">&#128682;</span> Sign Out</button>' +
     '</div>';
@@ -689,6 +690,163 @@ window.submitChangePassword = function() {
 window.closeProfileModal = function() {
   var modal = document.getElementById('profileModal');
   if (modal) modal.remove();
+};
+
+// ==================== SECURITY QUESTION MODAL ====================
+
+window.handleSecurityQuestionModal = function() {
+  closeProfilePanel();
+  var old = document.getElementById('profileModal');
+  if (old) old.remove();
+
+  var optionsHtml = '';
+  if (typeof SECURITY_QUESTIONS !== 'undefined') {
+    SECURITY_QUESTIONS.forEach(function(q, i) {
+      optionsHtml += '<option value="' + i + '">' + q + '</option>';
+    });
+  }
+
+  var modal = document.createElement('div');
+  modal.className = 'modal-overlay show';
+  modal.id = 'profileModal';
+  modal.innerHTML =
+    '<div class="modal">' +
+      '<h3>Security Question</h3>' +
+      '<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Set a security question to recover your password if you forget it.</p>' +
+      '<div class="profile-modal-form">' +
+        '<div class="form-group">' +
+          '<label>Question</label>' +
+          '<select id="secQSelect" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-light);font-size:14px;appearance:none;-webkit-appearance:none">' +
+            optionsHtml +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>Answer</label>' +
+          '<input type="text" id="secQAnswer" placeholder="Your answer (case-insensitive)" autocapitalize="none">' +
+        '</div>' +
+        '<div class="form-error" id="secQError"></div>' +
+      '</div>' +
+      '<div class="modal-actions">' +
+        '<button class="btn-secondary" onclick="closeProfileModal()">Cancel</button>' +
+        '<button class="btn-gold" id="saveSecQBtn" onclick="submitSecurityQuestion()">Save</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+};
+
+window.submitSecurityQuestion = function() {
+  var qSelect = document.getElementById('secQSelect');
+  var aInput = document.getElementById('secQAnswer');
+  var errEl = document.getElementById('secQError');
+  var btn = document.getElementById('saveSecQBtn');
+  if (!qSelect || !aInput || !errEl || !btn) return;
+
+  errEl.classList.remove('show');
+  if (!aInput.value.trim()) {
+    errEl.textContent = 'Please provide an answer.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  setSecurityQuestion(parseInt(qSelect.value), aInput.value).then(function() {
+    closeProfileModal();
+  }).catch(function(err) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    errEl.textContent = err.message || 'Could not save security question.';
+    errEl.classList.add('show');
+  });
+};
+
+// Prompt existing users to set security question after login
+window.checkSecurityQuestionPrompt = function() {
+  var user = getCurrentUser();
+  if (!user) return;
+  var username = (user.email || user.displayName || '').split('@')[0].toLowerCase();
+  if (!username) return;
+
+  // Don't prompt if already dismissed this session
+  if (sessionStorage.getItem('secq-dismissed')) return;
+
+  hasSecurityQuestionSet(username).then(function(hasQ) {
+    if (hasQ) return;
+
+    // Show prompt
+    var old = document.getElementById('secQPrompt');
+    if (old) old.remove();
+
+    var optionsHtml = '';
+    if (typeof SECURITY_QUESTIONS !== 'undefined') {
+      SECURITY_QUESTIONS.forEach(function(q, i) {
+        optionsHtml += '<option value="' + i + '">' + q + '</option>';
+      });
+    }
+
+    var prompt = document.createElement('div');
+    prompt.className = 'modal-overlay show';
+    prompt.id = 'secQPrompt';
+    prompt.innerHTML =
+      '<div class="modal">' +
+        '<h3>Set Up Password Recovery</h3>' +
+        '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Set a security question so you can reset your password if you ever forget it.</p>' +
+        '<div class="profile-modal-form">' +
+          '<div class="form-group">' +
+            '<label>Security Question</label>' +
+            '<select id="promptSecQ" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-light);font-size:14px;appearance:none;-webkit-appearance:none">' +
+              optionsHtml +
+            '</select>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label>Your Answer</label>' +
+            '<input type="text" id="promptSecA" placeholder="Your answer (case-insensitive)" autocapitalize="none">' +
+          '</div>' +
+          '<div class="form-error" id="promptSecError"></div>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" onclick="dismissSecQPrompt()">Skip for Now</button>' +
+          '<button class="btn-gold" id="promptSecSaveBtn" onclick="submitSecQPrompt()">Save</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(prompt);
+  }).catch(function() {});
+};
+
+window.dismissSecQPrompt = function() {
+  sessionStorage.setItem('secq-dismissed', '1');
+  var prompt = document.getElementById('secQPrompt');
+  if (prompt) prompt.remove();
+};
+
+window.submitSecQPrompt = function() {
+  var qSelect = document.getElementById('promptSecQ');
+  var aInput = document.getElementById('promptSecA');
+  var errEl = document.getElementById('promptSecError');
+  var btn = document.getElementById('promptSecSaveBtn');
+  if (!qSelect || !aInput || !errEl || !btn) return;
+
+  errEl.classList.remove('show');
+  if (!aInput.value.trim()) {
+    errEl.textContent = 'Please provide an answer.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  setSecurityQuestion(parseInt(qSelect.value), aInput.value).then(function() {
+    sessionStorage.setItem('secq-dismissed', '1');
+    var prompt = document.getElementById('secQPrompt');
+    if (prompt) prompt.remove();
+  }).catch(function(err) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    errEl.textContent = err.message || 'Could not save.';
+    errEl.classList.add('show');
+  });
 };
 
 // ==================== NAV ====================
