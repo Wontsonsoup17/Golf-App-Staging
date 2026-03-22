@@ -239,12 +239,11 @@ function changeUsername(newUsername) {
 // ==================== SECURITY QUESTION ====================
 
 var SECURITY_QUESTIONS = [
-  "What is your favorite golf course?",
   "What was the name of your first pet?",
+  "What was the first concert you attended?",
   "What city were you born in?",
-  "What is your mother's maiden name?",
-  "What is your favorite sports team?",
-  "What street did you grow up on?"
+  "What was the make of your first car?",
+  "What is your mother's maiden name?"
 ];
 
 function setSecurityQuestion(questionIndex, answer) {
