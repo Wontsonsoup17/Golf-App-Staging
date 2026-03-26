@@ -497,8 +497,10 @@ function getCourse(courseId) {
 // ==================== HELPERS ====================
 function getScoreClass(score, par) {
   if (!score) return '';
+  if (score === 1) return 'eagle';
   const diff = score - par;
-  if (diff <= -2) return 'eagle';
+  if (diff <= -3) return 'eagle';
+  if (diff === -2) return 'eagle';
   if (diff === -1) return 'birdie';
   if (diff === 0) return 'par-score';
   if (diff === 1) return 'bogey';
@@ -507,6 +509,7 @@ function getScoreClass(score, par) {
 
 function getScoreLabel(score, par) {
   if (!score) return '';
+  if (score === 1) return 'Hole-in-One';
   const diff = score - par;
   if (diff <= -3) return 'Albatross';
   if (diff === -2) return 'Eagle';
