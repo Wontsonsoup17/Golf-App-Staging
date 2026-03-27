@@ -470,26 +470,34 @@ function styledName(username) {
 
 // Render broadcast banner from Firebase config/broadcast
 function renderBroadcastBanner() {
-  if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
-  _firebaseDB.ref('config/broadcast').on('value', function(snap) {
-    var msg = snap.val();
-    var existing = document.getElementById('broadcastBanner');
-    if (!msg || !msg.text) {
-      if (existing) existing.innerHTML = '';
-      return;
-    }
-    if (!existing) {
-      existing = document.createElement('div');
-      existing.id = 'broadcastBanner';
-      var banner = document.getElementById('activeRoundBanner');
-      if (banner) banner.parentNode.insertBefore(existing, banner);
-      else document.body.prepend(existing);
-    }
-    existing.innerHTML = '<div class="broadcast-banner">' +
-      '<span>&#128227; ' + msg.text + '</span>' +
-      (isCurrentUserAdmin() ? '<span class="broadcast-dismiss" onclick="dismissBroadcast()">&#10005;</span>' : '') +
-      '</div>';
-  });
+  function _startBroadcastListener() {
+    if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
+    _firebaseDB.ref('config/broadcast').on('value', function(snap) {
+      var msg = snap.val();
+      var existing = document.getElementById('broadcastBanner');
+      if (!msg || !msg.text) {
+        if (existing) existing.innerHTML = '';
+        return;
+      }
+      if (!existing) {
+        existing = document.createElement('div');
+        existing.id = 'broadcastBanner';
+        var banner = document.getElementById('activeRoundBanner');
+        if (banner) banner.parentNode.insertBefore(existing, banner);
+        else document.body.prepend(existing);
+      }
+      existing.innerHTML = '<div class="broadcast-banner">' +
+        '<span>&#128227; ' + msg.text + '</span>' +
+        (isCurrentUserAdmin() ? '<span class="broadcast-dismiss" onclick="dismissBroadcast()">&#10005;</span>' : '') +
+        '</div>';
+    });
+  }
+  // Wait for Firebase if not ready yet
+  if (typeof _firebaseLoadPromise !== 'undefined') {
+    _firebaseLoadPromise.then(_startBroadcastListener);
+  } else {
+    _startBroadcastListener();
+  }
 }
 
 window.dismissBroadcast = function() {
