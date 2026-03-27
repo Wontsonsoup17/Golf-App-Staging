@@ -24,6 +24,7 @@
   <div class="subtitle" id="playerName"></div>
 </div>
 
+<div id="broadcastBanner"></div>
 <div id="activeRoundBanner"></div>
 
 <div class="main">
@@ -43,6 +44,7 @@
   requireAuth(function(user) {
     renderBottomNav('personal');
     renderActiveRoundBanner();
+    renderBroadcastBanner();
 
     var displayName = user.displayName || 'You';
     document.getElementById('playerName').textContent = displayName + "'s personal stats";

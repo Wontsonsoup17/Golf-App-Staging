@@ -331,12 +331,16 @@
       saveLocalUsers(localUsers);
     }
 
-    // Check if username is taken — use Firebase directly, skip local fallback
+    // Check if registration is locked, then if username is taken
     _firebaseLoadPromise.then(function() {
       if (_firebaseReady && _firebaseDB) {
-        return _firebaseDB.ref('usernames/' + username.toLowerCase()).once('value');
+        return _firebaseDB.ref('config/registrationLocked').once('value').then(function(lockSnap) {
+          if (lockSnap.val() === true) {
+            return Promise.reject({ _locked: true });
+          }
+          return _firebaseDB.ref('usernames/' + username.toLowerCase()).once('value');
+        });
       }
-      // Firebase not available — skip uniqueness check, proceed with sign-up
       return Promise.resolve({ exists: function() { return false; } });
     }).then(function(snap) {
       if (snap.exists()) {
@@ -375,7 +379,9 @@
         });
     }).catch(err => {
       setLoading(btn, false);
-      if (err.code === 'auth/email-already-in-use') {
+      if (err._locked) {
+        showError('Registration is currently closed. Try again later.');
+      } else if (err.code === 'auth/email-already-in-use') {
         showError('That username is already taken.');
       } else if (err.code === 'auth/weak-password') {
         showError('Password must be at least 6 characters.');

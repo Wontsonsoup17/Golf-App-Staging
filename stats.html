@@ -24,6 +24,7 @@
   <div class="subtitle">Community rankings</div>
 </div>
 
+<div id="broadcastBanner"></div>
 <div id="activeRoundBanner"></div>
 
 <div class="main">
@@ -42,6 +43,7 @@
   requireAuth(function(user) {
     renderBottomNav('stats');
     renderActiveRoundBanner();
+    renderBroadcastBanner();
 
     // Load from Firebase
     fbLoadRounds(user.uid).then(rounds => {
@@ -113,7 +115,7 @@
           lbHtml += `
             <div class="lb-row">
               <div class="lb-rank ${rc}">${i+1}</div>
-              <span class="lb-name">${p.name}</span>
+              <span class="lb-name">${isAdmin(p.name) ? '<span class="admin-name">' + p.name + '</span>' + adminBadge(p.name, 12) : p.name}</span>
               <span class="lb-meta">${p.rounds}R &bull; ${p.wins}W<br>Best: ${p.best}</span>
               <span class="lb-stat">${p.avg}</span>
             </div>

@@ -24,6 +24,7 @@
   <div class="subtitle">All your saved rounds</div>
 </div>
 
+<div id="broadcastBanner"></div>
 <div id="activeRoundBanner"></div>
 
 <div class="main">
@@ -51,6 +52,7 @@
   requireAuth(function(user) {
     renderBottomNav('history');
     renderActiveRoundBanner();
+    renderBroadcastBanner();
 
     let rounds = [];
 
@@ -152,7 +154,7 @@
                 }
                 if (parts.length) trackSummary = '<span style="font-size:11px;color:var(--text-muted);display:block;margin-top:2px">' + parts.join(' &bull; ') + '</span>';
               }
-              return '<div class="history-score-row"><div><span>' + p + '</span>' + (playerIncomplete ? '<span style="font-size:10px;color:var(--bogey);margin-left:6px">(' + holesPlayed + '/18)</span>' : '') + trackSummary + '</div><span><strong>' + total + '</strong> (' + diffStr + ') &bull; ' + holesPlayed + '/18</span></div>';
+              return '<div class="history-score-row"><div><span>' + styledName(p) + '</span>' + (playerIncomplete ? '<span style="font-size:10px;color:var(--bogey);margin-left:6px">(' + holesPlayed + '/18)</span>' : '') + trackSummary + '</div><span><strong>' + total + '</strong> (' + diffStr + ') &bull; ' + holesPlayed + '/18</span></div>';
             }).join('')}
           </div>
           <div class="history-actions">

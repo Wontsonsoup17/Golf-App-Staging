@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<style>html,body{background:#0a0f0d}</style>
+<script>
+(function(){var v='161';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+</script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="0a0f0d">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Admin - Westchester Golf</title>
+<link rel="stylesheet" href="shared.css?v=161">
+<style>
+.admin-page { padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 100px; }
+.admin-header { text-align: center; margin-bottom: 24px; }
+.admin-header h1 { font-family: 'Playfair Display',serif; color: var(--gold); font-size: 28px; }
+.admin-header .admin-sub { color: var(--text-muted); font-size: 12px; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+/* Stat cards */
+.admin-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+.admin-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 10px; text-align: center; }
+.admin-stat .stat-val { font-size: 24px; font-weight: 800; color: var(--gold); }
+.admin-stat .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* Tool sections */
+.admin-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.admin-section-title { font-size: 14px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.admin-section-title span { font-size: 18px; }
+
+/* Tool rows */
+.admin-tool { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.admin-tool:last-child { border-bottom: none; }
+.admin-tool-info { flex: 1; }
+.admin-tool-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.admin-tool-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.admin-tool-status { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+.status-on { background: rgba(0,230,118,0.15); color: var(--green-accent); }
+.status-off { background: var(--red-dim); color: var(--red); }
+
+/* Buttons */
+.admin-btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.admin-btn-gold { background: linear-gradient(135deg, #b8860b, #d4af37); color: #1a1a1a; }
+.admin-btn-gold:active { transform: scale(0.96); }
+.admin-btn-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,82,82,0.3); }
+.admin-btn-red:active { transform: scale(0.96); }
+.admin-btn-blue { background: rgba(64,196,255,0.15); color: var(--blue); border: 1px solid rgba(64,196,255,0.3); }
+.admin-btn-blue:active { transform: scale(0.96); }
+.admin-btn-sm { padding: 6px 12px; font-size: 11px; }
+
+/* Input */
+.admin-input { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; margin-bottom: 8px; }
+.admin-input:focus { border-color: var(--gold); }
+.admin-input::placeholder { color: var(--text-muted); }
+.admin-select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; margin-bottom: 8px; -webkit-appearance: none; }
+
+/* Toggle switch */
+.toggle-wrap { display: flex; align-items: center; gap: 10px; }
+.toggle { position: relative; width: 44px; height: 24px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 12px; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+.toggle.on { background: rgba(0,230,118,0.2); border-color: var(--green-accent); }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--text-muted); border-radius: 50%; transition: all 0.2s; }
+.toggle.on::after { left: 22px; background: var(--green-accent); }
+
+/* Active rounds list */
+.admin-round { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+.admin-round-info { flex: 1; }
+.admin-round-code { font-weight: 700; color: var(--gold); font-size: 14px; }
+.admin-round-meta { font-size: 11px; color: var(--text-muted); }
+.admin-round-actions { display: flex; gap: 6px; }
+
+/* User list */
+.admin-user { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: var(--bg); border-radius: 8px; margin-bottom: 6px; }
+.admin-user-name { font-weight: 600; color: var(--text); font-size: 13px; }
+.admin-user-uid { font-size: 10px; color: var(--text-muted); }
+.admin-user-actions { display: flex; gap: 6px; }
+
+/* Feedback */
+.admin-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--bg-card); border: 1px solid var(--gold); color: var(--gold); padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.admin-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="userHeader"></div>
+<div id="broadcastBanner"></div>
+<div id="activeRoundBanner"></div>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <h1>&#128305; Admin Dashboard</h1>
+    <div class="admin-sub">Super Admin Tools</div>
+  </div>
+
+  <!-- Stats overview -->
+  <div class="admin-stats">
+    <div class="admin-stat"><div class="stat-val" id="statUsers">-</div><div class="stat-label">Users</div></div>
+    <div class="admin-stat"><div class="stat-val" id="statRounds">-</div><div class="stat-label">Active Rounds</div></div>
+    <div class="admin-stat"><div class="stat-val" id="statVersion">-</div><div class="stat-label">Version</div></div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="admin-section">
+    <div class="admin-section-title"><span>&#9889;</span> Quick Actions</div>
+
+    <!-- Force Update -->
+    <div class="admin-tool">
+      <div class="admin-tool-info">
+        <div class="admin-tool-name">Force Update All Users</div>
+        <div class="admin-tool-desc">Bump required version — forces everyone to update</div>
+      </div>
+      <button class="admin-btn admin-btn-gold admin-btn-sm" onclick="forceUpdateAll()">Push Update</button>
+    </div>
+
+    <!-- Broadcast Message -->
+    <div class="admin-tool">
+      <div class="admin-tool-info">
+        <div class="admin-tool-name">Broadcast Message</div>
+        <div class="admin-tool-desc">Show a banner on all users' screens</div>
+      </div>
+      <button class="admin-btn admin-btn-blue admin-btn-sm" onclick="showBroadcastInput()">Send</button>
+    </div>
+    <div id="broadcastInputArea" style="display:none;margin-top:8px">
+      <input class="admin-input" id="broadcastText" placeholder="Type your message...">
+      <button class="admin-btn admin-btn-gold" style="width:100%" onclick="sendBroadcast()">Send Broadcast</button>
+    </div>
+
+    <!-- Lock Registration -->
+    <div class="admin-tool">
+      <div class="admin-tool-info">
+        <div class="admin-tool-name">Lock Registration</div>
+        <div class="admin-tool-desc">Block new signups</div>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="regLockToggle" onclick="toggleRegistration()"></div>
+        <span id="regLockLabel" style="font-size:11px;color:var(--text-muted)">Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Rounds Management -->
+  <div class="admin-section">
+    <div class="admin-section-title"><span>&#127948;</span> Active Rounds</div>
+    <div id="activeRoundsList">
+      <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">Loading...</div>
+    </div>
+  </div>
+
+  <!-- User Management -->
+  <div class="admin-section">
+    <div class="admin-section-title"><span>&#128101;</span> User Management</div>
+    <input class="admin-input" id="userSearch" placeholder="Search users..." oninput="filterUsers()">
+    <div id="userList">
+      <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-backdrop" id="resetPwModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:380px">
+    <h3 style="color:var(--gold);margin-bottom:12px">Reset Password</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Set a new password for <strong id="resetPwUser" style="color:var(--text)"></strong></p>
+    <input class="admin-input" id="resetPwInput" type="text" placeholder="New password (min 4 chars)">
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="admin-btn admin-btn-red" style="flex:1" onclick="document.getElementById('resetPwModal').style.display='none'">Cancel</button>
+      <button class="admin-btn admin-btn-gold" style="flex:1" onclick="executeResetPassword()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kick Player Modal -->
+<div class="modal-backdrop" id="kickModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:380px">
+    <h3 style="color:var(--gold);margin-bottom:12px">Kick Player</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Select a player to remove from round <strong id="kickRoundCode" style="color:var(--gold)"></strong></p>
+    <div id="kickPlayerList"></div>
+    <button class="admin-btn admin-btn-red" style="width:100%;margin-top:8px" onclick="document.getElementById('kickModal').style.display='none'">Cancel</button>
+  </div>
+</div>
+
+<!-- Delete Account Confirm Modal -->
+<div class="modal-backdrop" id="deleteAcctModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:380px">
+    <h3 style="color:var(--red);margin-bottom:12px">Delete Account</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">This will permanently delete <strong id="deleteAcctUser" style="color:var(--text)"></strong>'s account, credentials, and all saved rounds. This cannot be undone.</p>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="admin-btn" style="flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border-light)" onclick="document.getElementById('deleteAcctModal').style.display='none'">Cancel</button>
+      <button class="admin-btn admin-btn-red" style="flex:1" onclick="executeDeleteAccount()">Delete Forever</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-toast" id="adminToast"></div>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<script src="firebase-config.js?v=161"></script>
+<script src="shared.js?v=161"></script>
+<script src="firebase-sync.js?v=161"></script>
+<script>
+var _allUsers = [];
+var _pendingResetUser = null;
+var _pendingDeleteUser = null;
+var _pendingKickRound = null;
+var _activeRoundsData = {};
+
+function toast(msg) {
+  var t = document.getElementById('adminToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+requireAuth(function(user) {
+  // ADMIN GATE — redirect non-admins
+  if (!isCurrentUserAdmin()) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  renderUserHeader(user);
+  renderBottomNav('personal');
+  renderActiveRoundBanner();
+  renderBroadcastBanner();
+
+  // Load stats
+  document.getElementById('statVersion').textContent = 'v' + APP_VERSION;
+  loadAdminStats();
+  loadActiveRounds();
+  loadAllUsers();
+  loadRegLock();
+});
+
+// ==================== STATS ====================
+function loadAdminStats() {
+  _firebaseDB.ref('usernames').once('value').then(function(snap) {
+    var count = snap.exists() ? Object.keys(snap.val()).length : 0;
+    document.getElementById('statUsers').textContent = count;
+  });
+}
+
+// ==================== ACTIVE ROUNDS ====================
+function loadActiveRounds() {
+  listenToActiveRoundsCount(function(count, rounds) {
+    document.getElementById('statRounds').textContent = count;
+    var container = document.getElementById('activeRoundsList');
+    if (count === 0) {
+      container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">No active rounds</div>';
+      return;
+    }
+    // Also fetch full round data for kick feature
+    _firebaseDB.ref('activeRounds').once('value').then(function(snap) {
+      _activeRoundsData = snap.val() || {};
+    });
+    var html = '';
+    rounds.forEach(function(r) {
+      var course = getCourse(r.courseId);
+      html += '<div class="admin-round">' +
+        '<div class="admin-round-info">' +
+          '<div class="admin-round-code">' + r.code + '</div>' +
+          '<div class="admin-round-meta">' + (course ? course.name : r.courseId) + ' · ' + r.playerCount + ' player' + (r.playerCount !== 1 ? 's' : '') + ' · Admin: ' + (r.adminName || '?') + '</div>' +
+        '</div>' +
+        '<div class="admin-round-actions">' +
+          '<button class="admin-btn admin-btn-blue admin-btn-sm" onclick="openKickModal(\'' + r.code + '\')">Kick</button>' +
+          '<button class="admin-btn admin-btn-red admin-btn-sm" onclick="forceEndRound(\'' + r.code + '\')">End</button>' +
+        '</div>' +
+      '</div>';
+    });
+    container.innerHTML = html;
+  });
+}
+
+function forceEndRound(code) {
+  if (!confirm('Force end round ' + code + '? All players will be disconnected.')) return;
+  endGroupRoundForAll(code).then(function() {
+    toast('Round ' + code + ' ended');
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
+}
+
+// ==================== KICK PLAYER ====================
+function openKickModal(code) {
+  _pendingKickRound = code;
+  document.getElementById('kickRoundCode').textContent = code;
+  var round = _activeRoundsData[code];
+  var list = document.getElementById('kickPlayerList');
+  if (!round || !round.players) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:12px">No players found</div>';
+  } else {
+    var html = '';
+    Object.keys(round.players).forEach(function(uid) {
+      var name = round.players[uid].name || uid;
+      var isRoundAdmin = round.meta && round.meta.createdBy === uid;
+      html += '<div class="admin-user" style="margin-bottom:6px">' +
+        '<div><span class="admin-user-name">' + name + '</span>' + (isRoundAdmin ? ' <span style="font-size:10px;color:var(--gold)">★ HOST</span>' : '') + '</div>' +
+        '<button class="admin-btn admin-btn-red admin-btn-sm" onclick="kickPlayer(\'' + code + '\',\'' + uid + '\',\'' + name.replace(/'/g, "\\'") + '\')">Kick</button>' +
+      '</div>';
+    });
+    list.innerHTML = html;
+  }
+  document.getElementById('kickModal').style.display = 'flex';
+}
+
+function kickPlayer(code, uid, name) {
+  if (!confirm('Remove ' + name + ' from round ' + code + '?')) return;
+  var updates = {};
+  updates['activeRounds/' + code + '/players/' + uid] = null;
+  updates['activeRounds/' + code + '/scores/' + uid] = null;
+  updates['activeRounds/' + code + '/tracking/' + uid] = null;
+  updates['activeRounds/' + code + '/currentHole/' + uid] = null;
+  updates['activeRounds/' + code + '/finishedPlayers/' + uid] = null;
+  _firebaseDB.ref().update(updates).then(function() {
+    toast(name + ' kicked from ' + code);
+    document.getElementById('kickModal').style.display = 'none';
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
+}
+
+// ==================== FORCE UPDATE ====================
+function forceUpdateAll() {
+  var nextVersion = parseInt(APP_VERSION, 10) + 1;
+  if (!confirm('Force all users to update? This sets required version to ' + nextVersion + '. Users on v' + APP_VERSION + ' or below will see the update modal.')) return;
+  _firebaseDB.ref('config/requiredVersion').set(nextVersion).then(function() {
+    toast('Required version set to ' + nextVersion);
+    document.getElementById('statVersion').textContent = 'v' + APP_VERSION + ' (req: ' + nextVersion + ')';
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
+}
+
+// ==================== BROADCAST ====================
+function showBroadcastInput() {
+  var area = document.getElementById('broadcastInputArea');
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+  if (area.style.display === 'block') document.getElementById('broadcastText').focus();
+}
+
+function sendBroadcast() {
+  var text = document.getElementById('broadcastText').value.trim();
+  if (!text) return;
+  _firebaseDB.ref('config/broadcast').set({ text: text, ts: Date.now() }).then(function() {
+    toast('Broadcast sent');
+    document.getElementById('broadcastText').value = '';
+    document.getElementById('broadcastInputArea').style.display = 'none';
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
+}
+
+// ==================== LOCK REGISTRATION ====================
+function loadRegLock() {
+  _firebaseDB.ref('config/registrationLocked').on('value', function(snap) {
+    var locked = snap.val() === true;
+    var toggle = document.getElementById('regLockToggle');
+    var label = document.getElementById('regLockLabel');
+    if (locked) {
+      toggle.classList.add('on');
+      label.textContent = 'Locked';
+      label.style.color = 'var(--green-accent)';
+    } else {
+      toggle.classList.remove('on');
+      label.textContent = 'Open';
+      label.style.color = 'var(--text-muted)';
+    }
+  });
+}
+
+function toggleRegistration() {
+  var toggle = document.getElementById('regLockToggle');
+  var isOn = toggle.classList.contains('on');
+  _firebaseDB.ref('config/registrationLocked').set(!isOn).then(function() {
+    toast(!isOn ? 'Registration locked' : 'Registration unlocked');
+  });
+}
+
+// ==================== USER MANAGEMENT ====================
+function loadAllUsers() {
+  _firebaseDB.ref('usernames').once('value').then(function(snap) {
+    var data = snap.val() || {};
+    _allUsers = Object.keys(data).map(function(username) {
+      return { username: username, uid: data[username] };
+    }).sort(function(a, b) { return a.username.localeCompare(b.username); });
+    renderUserList(_allUsers);
+  });
+}
+
+function filterUsers() {
+  var q = document.getElementById('userSearch').value.toLowerCase().trim();
+  if (!q) { renderUserList(_allUsers); return; }
+  var filtered = _allUsers.filter(function(u) { return u.username.toLowerCase().includes(q); });
+  renderUserList(filtered);
+}
+
+function renderUserList(users) {
+  var container = document.getElementById('userList');
+  if (!users.length) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">No users found</div>';
+    return;
+  }
+  var html = '';
+  users.forEach(function(u) {
+    var isAdminUser = isAdmin(u.username);
+    var nameDisplay = isAdminUser ? '<span class="admin-name">' + u.username + '</span> &#128305;' : u.username;
+    html += '<div class="admin-user">' +
+      '<div>' +
+        '<div class="admin-user-name">' + nameDisplay + '</div>' +
+        '<div class="admin-user-uid">' + u.uid + '</div>' +
+      '</div>' +
+      '<div class="admin-user-actions">' +
+        '<button class="admin-btn admin-btn-blue admin-btn-sm" onclick="openResetPassword(\'' + u.username + '\')">Reset PW</button>' +
+        (isAdminUser ? '' : '<button class="admin-btn admin-btn-red admin-btn-sm" onclick="openDeleteAccount(\'' + u.username + '\',\'' + u.uid + '\')">Delete</button>') +
+      '</div>' +
+    '</div>';
+  });
+  container.innerHTML = html;
+}
+
+// ==================== RESET PASSWORD ====================
+function openResetPassword(username) {
+  _pendingResetUser = username;
+  document.getElementById('resetPwUser').textContent = username;
+  document.getElementById('resetPwInput').value = '';
+  document.getElementById('resetPwModal').style.display = 'flex';
+  setTimeout(function() { document.getElementById('resetPwInput').focus(); }, 100);
+}
+
+function executeResetPassword() {
+  var pw = document.getElementById('resetPwInput').value;
+  if (pw.length < 4) { toast('Password must be at least 4 characters'); return; }
+  // Hash the new password using the same algorithm as the app
+  var hash = simpleHash(pw);
+  _firebaseDB.ref('credentials/' + _pendingResetUser.toLowerCase() + '/passwordHash').set(hash).then(function() {
+    toast('Password reset for ' + _pendingResetUser);
+    document.getElementById('resetPwModal').style.display = 'none';
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
+}
+
+// ==================== DELETE ACCOUNT ====================
+function openDeleteAccount(username, uid) {
+  _pendingDeleteUser = { username: username, uid: uid };
+  document.getElementById('deleteAcctUser').textContent = username;
+  document.getElementById('deleteAcctModal').style.display = 'flex';
+}
+
+function executeDeleteAccount() {
+  var u = _pendingDeleteUser;
+  if (!u) return;
+  Promise.all([
+    _firebaseDB.ref('credentials/' + u.username.toLowerCase()).remove(),
+    _firebaseDB.ref('usernames/' + u.username.toLowerCase()).remove(),
+    _firebaseDB.ref('users/' + u.uid).remove()
+  ]).then(function() {
+    toast(u.username + ' deleted');
+    document.getElementById('deleteAcctModal').style.display = 'none';
+    // Refresh user list
+    _allUsers = _allUsers.filter(function(x) { return x.username !== u.username; });
+    renderUserList(_allUsers);
+    document.getElementById('statUsers').textContent = _allUsers.length;
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
+}
+</script>
+</body>
+</html>

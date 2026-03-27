@@ -1251,6 +1251,49 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="date"]:focus
   background: linear-gradient(90deg, rgba(255,213,79,0.2), rgba(255,171,0,0.2));
 }
 
+/* ===== ADMIN SYSTEM ===== */
+.admin-name {
+  color: var(--gold) !important;
+  font-weight: 700;
+}
+.admin-badge {
+  vertical-align: middle;
+  filter: drop-shadow(0 0 4px rgba(255,213,79,0.4));
+}
+.admin-avatar {
+  border: 2px solid var(--gold) !important;
+  box-shadow: 0 0 12px rgba(255,213,79,0.3) !important;
+}
+.admin-menu-link {
+  color: var(--gold) !important;
+  font-weight: 600 !important;
+}
+
+/* Broadcast banner */
+.broadcast-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: linear-gradient(90deg, rgba(64,196,255,0.12), rgba(0,176,255,0.12));
+  border-bottom: 1px solid rgba(64,196,255,0.25);
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  animation: broadcastPulse 3s ease infinite;
+}
+.broadcast-dismiss {
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.broadcast-dismiss:hover { opacity: 1; }
+@keyframes broadcastPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
 /* ===== NINE NAV ===== */
 .nine-nav {
   display: flex;

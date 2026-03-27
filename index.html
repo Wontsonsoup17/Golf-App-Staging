@@ -27,6 +27,7 @@
   <p>6 Public Courses &bull; Live Scoring &bull; Stats</p>
 </div>
 
+<div id="broadcastBanner"></div>
 <div id="activeRoundBanner"></div>
 
 <div class="main" style="padding-top:0">
@@ -71,6 +72,7 @@
     renderBottomNav('courses');
     renderUserHeader(user);
     renderActiveRoundBanner();
+    renderBroadcastBanner();
 
     // Render courses immediately
     renderCourseGrid([]);

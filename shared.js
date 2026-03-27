@@ -1,6 +1,6 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed
-var APP_VERSION = '160';
+var APP_VERSION = '161';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -438,6 +438,74 @@ const COURSES = [
   }
 ];
 
+// ==================== ADMIN SYSTEM ====================
+var ADMIN_USERNAME = 'kohyo';
+
+function isAdmin(username) {
+  if (!username) return false;
+  return username.toLowerCase() === ADMIN_USERNAME;
+}
+
+function isCurrentUserAdmin() {
+  try {
+    var session = JSON.parse(localStorage.getItem('wg-session') || '{}');
+    return isAdmin(session.username);
+  } catch(e) { return false; }
+}
+
+// Returns admin badge HTML for display next to names
+function adminBadge(username, size) {
+  if (!isAdmin(username)) return '';
+  var s = size || 14;
+  return ' <span class="admin-badge" style="font-size:' + s + 'px" title="App Admin">&#128305;</span>';
+}
+
+// Wraps a username in gold styling if admin
+function styledName(username) {
+  if (isAdmin(username)) {
+    return '<span class="admin-name">' + username + '</span>' + adminBadge(username);
+  }
+  return username;
+}
+
+// Render broadcast banner from Firebase config/broadcast
+function renderBroadcastBanner() {
+  if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
+  _firebaseDB.ref('config/broadcast').on('value', function(snap) {
+    var msg = snap.val();
+    var existing = document.getElementById('broadcastBanner');
+    if (!msg || !msg.text) {
+      if (existing) existing.innerHTML = '';
+      return;
+    }
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.id = 'broadcastBanner';
+      var banner = document.getElementById('activeRoundBanner');
+      if (banner) banner.parentNode.insertBefore(existing, banner);
+      else document.body.prepend(existing);
+    }
+    existing.innerHTML = '<div class="broadcast-banner">' +
+      '<span>&#128227; ' + msg.text + '</span>' +
+      (isCurrentUserAdmin() ? '<span class="broadcast-dismiss" onclick="dismissBroadcast()">&#10005;</span>' : '') +
+      '</div>';
+  });
+}
+
+window.dismissBroadcast = function() {
+  if (typeof _firebaseDB !== 'undefined' && _firebaseDB) {
+    _firebaseDB.ref('config/broadcast').remove();
+  }
+};
+
+// Check if registration is locked
+function checkRegistrationLock(callback) {
+  if (typeof _firebaseDB === 'undefined' || !_firebaseDB) { callback(false); return; }
+  _firebaseDB.ref('config/registrationLocked').once('value').then(function(snap) {
+    callback(snap.val() === true);
+  }).catch(function() { callback(false); });
+}
+
 // ==================== STORAGE ====================
 const STORAGE_KEY = 'westchester-golf-v2';
 
@@ -557,13 +625,17 @@ function renderUserHeader(user) {
     ? '<img src="' + avatarUrl + '" class="user-avatar-img">'
     : initial;
 
+  var isAdminUser = isAdmin(name);
+  var avatarClass = 'user-avatar' + (avatarUrl ? ' has-image' : '') + (isAdminUser ? ' admin-avatar' : '');
+  var nameHtml = isAdminUser ? '<span class="admin-name">' + name + '</span>' + adminBadge(name, 12) : name;
+
   // Header just shows clickable avatar+name
   header.innerHTML =
     '<div class="profile-trigger" onclick="toggleProfilePanel()">' +
-      '<div class="user-avatar' + (avatarUrl ? ' has-image' : '') + '">' +
+      '<div class="' + avatarClass + '">' +
         avatarContent +
       '</div>' +
-      '<div><div class="user-name">' + name + '</div></div>' +
+      '<div><div class="user-name">' + nameHtml + '</div></div>' +
     '</div>' +
     '<input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">';
 
@@ -588,13 +660,14 @@ function renderUserHeader(user) {
   panel.id = 'profilePanel';
   panel.innerHTML =
     '<div class="profile-panel-header">' +
-      '<div class="profile-panel-avatar' + (avatarUrl ? ' has-image' : '') + '">' +
+      '<div class="profile-panel-avatar' + (avatarUrl ? ' has-image' : '') + (isAdminUser ? ' admin-avatar' : '') + '">' +
         panelAvatarContent +
       '</div>' +
-      '<div class="profile-panel-name">' + name + '</div>' +
-      '<div class="profile-panel-sub">Westchester Golf</div>' +
+      '<div class="profile-panel-name">' + (isAdminUser ? '<span class="admin-name">' + name + '</span>' + adminBadge(name, 16) : name) + '</div>' +
+      '<div class="profile-panel-sub">' + (isAdminUser ? '&#128305; App Admin' : 'Westchester Golf') + '</div>' +
     '</div>' +
     '<div class="profile-panel-menu">' +
+      (isAdminUser ? '<a href="admin.html" class="profile-menu-item admin-menu-link"><span class="menu-icon">&#128305;</span> Admin Dashboard</a><div class="profile-menu-separator"></div>' : '') +
       '<button class="profile-menu-item" onclick="handleChangePhoto()"><span class="menu-icon">&#128247;</span> Change Photo</button>' +
       '<button class="profile-menu-item" onclick="handleChangeUsernameModal()"><span class="menu-icon">&#9998;</span> Change Username</button>' +
       '<button class="profile-menu-item" onclick="handleChangePasswordModal()"><span class="menu-icon">&#128274;</span> Change Password</button>' +
