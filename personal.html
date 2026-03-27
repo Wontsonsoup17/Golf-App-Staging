@@ -62,16 +62,28 @@
         return;
       }
 
+      // Helper: find my player name in a round
+      // Tries exact match, case-insensitive match, then falls back to
+      // first player (since fbLoadRounds only returns rounds owned by this uid,
+      // every round belongs to the current user — their name may have changed)
+      function findMe(r) {
+        if (!r.players || !r.players.length) return null;
+        var me = r.players.find(function(p) { return p === myName; });
+        if (me) return me;
+        me = r.players.find(function(p) { return p.toLowerCase() === myName.toLowerCase(); });
+        if (me) return me;
+        // Fallback: if this is a solo round (1 player), it must be me
+        if (r.players.length === 1) return r.players[0];
+        // For group rounds, check if any player name matches any known past username
+        // Last resort: return null (skip this round)
+        return null;
+      }
+
       // Find my stats across all rounds
       var myRounds = 0, myTotalScore = 0, myBest = Infinity, coursesPlayed = new Set();
 
       rounds.forEach(function(r) {
-        // Find my name in this round (could vary by display name)
-        var me = r.players.find(function(p) { return p === myName; });
-        if (!me) {
-          // Fallback: check all players for a case-insensitive match
-          me = r.players.find(function(p) { return p.toLowerCase() === myName.toLowerCase(); });
-        }
+        var me = findMe(r);
         if (!me) return;
 
         var scores = r.scores[me];
@@ -94,8 +106,7 @@
       var totalPutts = 0, totalPuttHoles = 0;
 
       rounds.forEach(function(r) {
-        var me = r.players.find(function(p) { return p === myName; }) ||
-                 r.players.find(function(p) { return p.toLowerCase() === myName.toLowerCase(); });
+        var me = findMe(r);
         if (!me || !r.scores[me] || !r.tracking || !r.tracking[me]) return;
         var scores = r.scores[me];
         var t = r.tracking[me];
@@ -131,8 +142,7 @@
       if (myRounds > 0) {
         var diffs = [];
         rounds.forEach(function(r) {
-          var me = r.players.find(function(p) { return p === myName; }) ||
-                   r.players.find(function(p) { return p.toLowerCase() === myName.toLowerCase(); });
+          var me = findMe(r);
           if (!me || !r.scores[me]) return;
           var total = r.scores[me].reduce(function(a, b) { return a + b; }, 0);
           var played = r.scores[me].filter(function(s) { return s > 0; }).length;
@@ -175,8 +185,7 @@
         var myCourseBest = Infinity, myCourseTotal = 0, myCourseRounds = 0;
 
         courseRounds.forEach(function(r) {
-          var me = r.players.find(function(p) { return p === myName; }) ||
-                   r.players.find(function(p) { return p.toLowerCase() === myName.toLowerCase(); });
+          var me = findMe(r);
           if (!me || !r.scores[me]) return;
 
           var total = r.scores[me].reduce(function(a, b) { return a + b; }, 0);
@@ -223,8 +232,7 @@
       // Collect data points: { date, score, courseName, par }
       var points = [];
       rounds.forEach(function(r) {
-        var me = r.players.find(function(p) { return p === myName; }) ||
-                 r.players.find(function(p) { return p.toLowerCase() === myName.toLowerCase(); });
+        var me = findMe(r);
         if (!me || !r.scores[me]) return;
         var total = r.scores[me].reduce(function(a, b) { return a + b; }, 0);
         var played = r.scores[me].filter(function(s) { return s > 0; }).length;
