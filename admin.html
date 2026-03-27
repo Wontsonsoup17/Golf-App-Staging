@@ -228,12 +228,14 @@ requireAuth(function(user) {
   renderActiveRoundBanner();
   renderBroadcastBanner();
 
-  // Load stats
+  // Wait for Firebase to be ready, then load everything
   document.getElementById('statVersion').textContent = 'v' + APP_VERSION;
-  loadAdminStats();
-  loadActiveRounds();
-  loadAllUsers();
-  loadRegLock();
+  _firebaseLoadPromise.then(function() {
+    loadAdminStats();
+    loadActiveRounds();
+    loadAllUsers();
+    loadRegLock();
+  });
 });
 
 // ==================== STATS ====================
