@@ -596,8 +596,8 @@ function _showRoundBroadcastModal(msg, msgId, groupCode) {
   var remaining = Math.max(0, BROADCAST_EXPIRY_MS - elapsed);
   modal.innerHTML =
     '<div style="background:var(--bg-card,#1a2e1a);border:1px solid rgba(64,196,255,0.3);border-radius:16px;padding:28px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
-      '<div style="font-size:40px;margin-bottom:8px">&#127948;</div>' +
-      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold,#ffd54f);font-weight:700;margin-bottom:4px">Round Message</div>' +
+      '<div style="font-size:40px;margin-bottom:8px">&#128227;</div>' +
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold,#ffd54f);font-weight:700;margin-bottom:4px">Admin Broadcast</div>' +
       '<div style="font-size:10px;color:var(--text-muted,#7a9e86);margin-bottom:12px;font-family:monospace">[' + groupCode + ']</div>' +
       '<p style="color:var(--text,#e8f5e9);font-size:16px;line-height:1.5;margin-bottom:16px;font-weight:500">' + msg.text + '</p>' +
       '<div id="broadcastTimer" style="font-size:11px;color:var(--text-muted,#7a9e86);margin-bottom:20px">Expires in <span id="broadcastCountdown"></span></div>' +
