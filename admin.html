@@ -134,7 +134,6 @@
     <div id="broadcastInputArea" style="display:none;margin-top:8px">
       <select class="admin-select" id="broadcastScope">
         <option value="app">&#127760; App-wide (all pages)</option>
-        <option value="round">&#127948; My Live Round only</option>
       </select>
       <input class="admin-input" id="broadcastText" placeholder="Type your message...">
       <button class="admin-btn admin-btn-gold" style="width:100%" onclick="sendBroadcast()">Send Broadcast</button>
@@ -352,38 +351,55 @@ function forceUpdateAll() {
 function showBroadcastInput() {
   var area = document.getElementById('broadcastInputArea');
   area.style.display = area.style.display === 'none' ? 'block' : 'none';
-  if (area.style.display === 'block') document.getElementById('broadcastText').focus();
+  if (area.style.display === 'block') {
+    // Populate scope dropdown with active rounds
+    var sel = document.getElementById('broadcastScope');
+    // Keep app-wide option, remove old round options
+    while (sel.options.length > 1) sel.remove(1);
+    // Add active rounds from cached data
+    var roundsData = _activeRoundsData || {};
+    var codes = Object.keys(roundsData);
+    if (codes.length > 0) {
+      codes.forEach(function(code) {
+        var r = roundsData[code];
+        if (r && r.meta && r.meta.status === 'active') {
+          var courseName = '';
+          var c = getCourse(r.meta.courseId);
+          if (c) courseName = c.name;
+          var playerCount = r.players ? Object.keys(r.players).length : 0;
+          var opt = document.createElement('option');
+          opt.value = 'round:' + code;
+          opt.textContent = '\u{1F3CC} Round [' + code + '] — ' + (courseName || r.meta.courseId) + ' (' + playerCount + 'p)';
+          sel.appendChild(opt);
+        }
+      });
+    }
+    document.getElementById('broadcastText').focus();
+  }
 }
 
 function sendBroadcast() {
   var text = document.getElementById('broadcastText').value.trim();
   if (!text) return;
   var scope = document.getElementById('broadcastScope').value;
+  var ref, label;
 
-  if (scope === 'round') {
-    // Send to current live round only
-    var groupCode = localStorage.getItem('active-group-code');
-    if (!groupCode) {
-      toast('No active live round found');
-      return;
-    }
-    _firebaseDB.ref('activeRounds/' + groupCode + '/broadcast').set({ text: text, ts: Date.now() }).then(function() {
-      toast('Broadcast sent to round ' + groupCode);
-      document.getElementById('broadcastText').value = '';
-      document.getElementById('broadcastInputArea').style.display = 'none';
-    }).catch(function(e) {
-      toast('Error: ' + e.message);
-    });
+  if (scope.startsWith('round:')) {
+    var code = scope.split(':')[1];
+    ref = _firebaseDB.ref('activeRounds/' + code + '/broadcast');
+    label = 'round ' + code;
   } else {
-    // App-wide broadcast
-    _firebaseDB.ref('config/broadcast').set({ text: text, ts: Date.now() }).then(function() {
-      toast('App-wide broadcast sent');
-      document.getElementById('broadcastText').value = '';
-      document.getElementById('broadcastInputArea').style.display = 'none';
-    }).catch(function(e) {
-      toast('Error: ' + e.message);
-    });
+    ref = _firebaseDB.ref('config/broadcast');
+    label = 'app-wide';
   }
+
+  ref.set({ text: text, ts: Date.now() }).then(function() {
+    toast('Broadcast sent (' + label + ')');
+    document.getElementById('broadcastText').value = '';
+    document.getElementById('broadcastInputArea').style.display = 'none';
+  }).catch(function(e) {
+    toast('Error: ' + e.message);
+  });
 }
 
 // ==================== LOCK REGISTRATION ====================
