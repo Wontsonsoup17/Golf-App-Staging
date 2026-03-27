@@ -481,7 +481,10 @@
       document.getElementById('courseName').textContent = course.name;
       document.getElementById('courseSub').textContent = R.teeLabel + ' Tees  |  Par ' + course.par + '  |  ' + formatDate(R.date);
 
-      renderLeaderboard(R, course, user, groupCode, isAdmin, iAmFinished, isFinished);
+      // Fetch avatars for all players, then render
+      fetchPlayerAvatars(R._playerUids, function() {
+        renderLeaderboard(R, course, user, groupCode, isAdmin, iAmFinished, isFinished);
+      });
     });
 
     // If no data after a short delay, show error
@@ -635,7 +638,12 @@
 
       // Header row
       html += '<div class="lb-player-header" onclick="togglePlayer(\'' + ps.name.replace(/'/g, "\\'") + '\')">';
-      html += '<div class="lb-rank ' + rankClass + '">' + ps.rank + '</div>';
+      var avatarImg = playerAvatarByName(ps.name, R._nameToUid, 28);
+      if (avatarImg) {
+        html += avatarImg;
+      } else {
+        html += '<div class="lb-rank ' + rankClass + '">' + ps.rank + '</div>';
+      }
       var isPlayerAdmin = groupCode && R._nameToUid && R._createdBy && R._nameToUid[ps.name] === R._createdBy;
       html += '<div class="lb-player-name">' + styledName(ps.name) + (isMe ? '<span class="you-tag">YOU</span>' : '') + (isPlayerAdmin ? '<span style="font-size:9px;font-weight:700;color:#f5a623;background:rgba(245,166,35,0.15);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;margin-left:6px;vertical-align:middle">&#9733; HOST</span>' : '') + '</div>';
       html += '<div class="lb-player-score">';

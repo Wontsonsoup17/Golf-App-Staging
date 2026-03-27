@@ -901,9 +901,11 @@
       document.getElementById('courseSub').textContent = `${R.teeLabel} Tees  |  Par ${course.par}  |  ${formatDate(R.date)}`;
 
       if (!initialRenderDone) {
-        // First load — full render
+        // First load — fetch avatars then full render
         initialRenderDone = true;
-        renderGroup();
+        fetchPlayerAvatars(R._playerUids, function() {
+          renderGroup();
+        });
       } else {
         // Subsequent updates from other users — only update the players leaderboard
         updatePlayersLeaderboard();
@@ -963,7 +965,10 @@
 
         lhtml += '<div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;' + borderTop + meBg + '">';
         lhtml += '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">';
-        if (isMe) {
+        var pAvatar = playerAvatarByName(p, roundData._nameToUid, 26);
+        if (pAvatar) {
+          lhtml += pAvatar;
+        } else if (isMe) {
           lhtml += '<div style="width:26px;height:26px;border-radius:50%;background:var(--green-accent);color:#000;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0">YOU</div>';
         } else {
           lhtml += '<div style="width:26px;height:26px;border-radius:50%;background:var(--bg-elevated);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;border:1px solid var(--border)">' + p.charAt(0).toUpperCase() + '</div>';

@@ -640,6 +640,64 @@ function checkRegistrationLock(callback) {
   }).catch(function() { callback(false); });
 }
 
+// ==================== PLAYER AVATAR CACHE ====================
+// Fetches and caches avatars for players in a live round so they show in leaderboards.
+var _playerAvatarCache = {};
+
+// Fetch avatars for a list of UIDs from Firebase, cache them, then call callback
+function fetchPlayerAvatars(uids, callback) {
+  if (!uids || !uids.length) { if (callback) callback(); return; }
+  var remaining = uids.length;
+  var changed = false;
+  uids.forEach(function(uid) {
+    // Already cached locally?
+    var local = getUserAvatar(uid);
+    if (local) {
+      _playerAvatarCache[uid] = local;
+      remaining--;
+      if (remaining === 0 && callback) callback();
+      return;
+    }
+    // Already fetched from Firebase this session?
+    if (_playerAvatarCache[uid] !== undefined) {
+      remaining--;
+      if (remaining === 0 && callback) callback();
+      return;
+    }
+    // Fetch from Firebase
+    _firebaseLoadPromise.then(function() {
+      if (!_firebaseReady || !_firebaseDB) { remaining--; if (remaining === 0 && callback) callback(); return; }
+      _firebaseDB.ref('users/' + uid + '/profile/avatar').once('value').then(function(snap) {
+        var url = snap.val();
+        _playerAvatarCache[uid] = url || null;
+        if (url) changed = true;
+        remaining--;
+        if (remaining === 0 && callback) callback();
+      }).catch(function() {
+        _playerAvatarCache[uid] = null;
+        remaining--;
+        if (remaining === 0 && callback) callback();
+      });
+    });
+  });
+}
+
+// Get a small avatar HTML element for a player by UID
+function playerAvatarHtml(uid, size) {
+  var s = size || 24;
+  var url = _playerAvatarCache[uid];
+  if (url) {
+    return '<img src="' + url + '" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;vertical-align:middle">';
+  }
+  return '';
+}
+
+// Get avatar by player name (needs nameToUid map from round data)
+function playerAvatarByName(name, nameToUid, size) {
+  if (!nameToUid || !nameToUid[name]) return '';
+  return playerAvatarHtml(nameToUid[name], size);
+}
+
 // ==================== STORAGE ====================
 const STORAGE_KEY = 'westchester-golf-v2';
 
