@@ -470,10 +470,20 @@ function styledName(username) {
 
 // Render broadcast as a full-screen popup modal
 // Messages expire after 20 minutes — if user opens app after that, they won't see it
-var _broadcastDismissedId = null;
 var BROADCAST_EXPIRY_MS = 20 * 60 * 1000; // 20 minutes
+var _broadcastListenerActive = false; // prevent multiple listeners
+
+function _isBroadcastDismissed(msgId) {
+  try { return sessionStorage.getItem('broadcast_dismissed') === msgId; } catch(e) { return false; }
+}
+function _setBroadcastDismissed(msgId) {
+  try { sessionStorage.setItem('broadcast_dismissed', msgId); } catch(e) {}
+}
 
 function renderBroadcastBanner() {
+  if (_broadcastListenerActive) return; // only one listener per page
+  _broadcastListenerActive = true;
+
   function _startBroadcastListener() {
     if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
     _firebaseDB.ref('config/broadcast').on('value', function(snap) {
@@ -487,10 +497,10 @@ function renderBroadcastBanner() {
       if (msg.ts && (Date.now() - msg.ts > BROADCAST_EXPIRY_MS)) {
         return; // expired, don't show
       }
-      // Don't show if user already dismissed this exact message
+      // Don't show if user already dismissed this exact message (persisted in sessionStorage)
       var msgId = msg.ts + '_' + msg.text;
-      if (_broadcastDismissedId === msgId) return;
-      // Don't show duplicate modals
+      if (_isBroadcastDismissed(msgId)) return;
+      // Don't show if modal already visible
       if (document.getElementById('broadcastModal')) return;
       // Build full-screen modal
       _showBroadcastModal(msg, msgId);
@@ -548,7 +558,7 @@ function _removeBroadcastModal() {
 }
 
 window.closeBroadcastModal = function(msgId) {
-  _broadcastDismissedId = msgId;
+  _setBroadcastDismissed(msgId);
   _removeBroadcastModal();
 };
 
@@ -561,10 +571,12 @@ window.dismissBroadcast = function() {
 
 // Listen for round-specific broadcast messages
 // Call this on any page that has an active group round
-var _roundBroadcastDismissedId = null;
+var _roundBroadcastListenerActive = false;
 function renderRoundBroadcastListener() {
+  if (_roundBroadcastListenerActive) return;
   var groupCode = localStorage.getItem('active-group-code');
   if (!groupCode) return;
+  _roundBroadcastListenerActive = true;
   function _startRoundListener() {
     if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
     _firebaseDB.ref('activeRounds/' + groupCode + '/broadcast').on('value', function(snap) {
@@ -574,7 +586,7 @@ function renderRoundBroadcastListener() {
       if (msg.ts && (Date.now() - msg.ts > BROADCAST_EXPIRY_MS)) return;
       // Don't show if already dismissed this message
       var msgId = 'round_' + groupCode + '_' + msg.ts + '_' + msg.text;
-      if (_roundBroadcastDismissedId === msgId) return;
+      if (_isBroadcastDismissed(msgId)) return;
       // Don't show if another broadcast modal is already visible
       if (document.getElementById('broadcastModal')) return;
       // Show the modal
@@ -609,7 +621,7 @@ function _showRoundBroadcastModal(msg, msgId, groupCode) {
 }
 
 window.closeRoundBroadcast = function(msgId) {
-  _roundBroadcastDismissedId = msgId;
+  _setBroadcastDismissed(msgId);
   _removeBroadcastModal();
 };
 
