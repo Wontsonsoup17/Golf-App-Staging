@@ -357,7 +357,7 @@
         html += '<div class="live-round-course">' + courseName + '</div>';
         html += '<div class="live-round-meta">' + r.teeLabel + ' Tees &bull; ' + r.playerCount + ' player' + (r.playerCount !== 1 ? 's' : '') + '</div>';
         html += '</div>';
-        html += '<div class="live-round-admin"><div class="live-round-admin-label">★ ADMIN</div>' + (r.adminName || 'Unknown') + '</div>';
+        html += '<div class="live-round-admin"><div class="live-round-admin-label">★ HOST</div>' + styledName(r.adminName || 'Unknown') + '</div>';
         html += '</div>';
       }
       list.innerHTML = html;
