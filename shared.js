@@ -468,31 +468,34 @@ function styledName(username) {
   return username;
 }
 
-// Render broadcast banner from Firebase config/broadcast
+// Render broadcast as a full-screen popup modal
+// Messages expire after 20 minutes — if user opens app after that, they won't see it
+var _broadcastDismissedId = null;
+var BROADCAST_EXPIRY_MS = 20 * 60 * 1000; // 20 minutes
+
 function renderBroadcastBanner() {
   function _startBroadcastListener() {
     if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
     _firebaseDB.ref('config/broadcast').on('value', function(snap) {
       var msg = snap.val();
-      var existing = document.getElementById('broadcastBanner');
+      // Remove existing modal if message cleared
       if (!msg || !msg.text) {
-        if (existing) existing.innerHTML = '';
+        _removeBroadcastModal();
         return;
       }
-      if (!existing) {
-        existing = document.createElement('div');
-        existing.id = 'broadcastBanner';
-        var banner = document.getElementById('activeRoundBanner');
-        if (banner) banner.parentNode.insertBefore(existing, banner);
-        else document.body.prepend(existing);
+      // Check 20-minute expiry
+      if (msg.ts && (Date.now() - msg.ts > BROADCAST_EXPIRY_MS)) {
+        return; // expired, don't show
       }
-      existing.innerHTML = '<div class="broadcast-banner">' +
-        '<span>&#128227; ' + msg.text + '</span>' +
-        (isCurrentUserAdmin() ? '<span class="broadcast-dismiss" onclick="dismissBroadcast()">&#10005;</span>' : '') +
-        '</div>';
+      // Don't show if user already dismissed this exact message
+      var msgId = msg.ts + '_' + msg.text;
+      if (_broadcastDismissedId === msgId) return;
+      // Don't show duplicate modals
+      if (document.getElementById('broadcastModal')) return;
+      // Build full-screen modal
+      _showBroadcastModal(msg, msgId);
     });
   }
-  // Wait for Firebase if not ready yet
   if (typeof _firebaseLoadPromise !== 'undefined') {
     _firebaseLoadPromise.then(_startBroadcastListener);
   } else {
@@ -500,7 +503,57 @@ function renderBroadcastBanner() {
   }
 }
 
+function _showBroadcastModal(msg, msgId) {
+  var modal = document.createElement('div');
+  modal.id = 'broadcastModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;display:flex;align-items:center;justify-content:center;padding:24px;animation:broadcastFadeIn 0.3s ease';
+
+  // Calculate time remaining
+  var elapsed = Date.now() - (msg.ts || Date.now());
+  var remaining = Math.max(0, BROADCAST_EXPIRY_MS - elapsed);
+
+  modal.innerHTML =
+    '<div style="background:var(--bg-card,#1a2e1a);border:1px solid rgba(64,196,255,0.3);border-radius:16px;padding:28px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
+      '<div style="font-size:40px;margin-bottom:8px">&#128227;</div>' +
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold,#ffd54f);font-weight:700;margin-bottom:12px">Admin Broadcast</div>' +
+      '<p style="color:var(--text,#e8f5e9);font-size:16px;line-height:1.5;margin-bottom:16px;font-weight:500">' + msg.text + '</p>' +
+      '<div id="broadcastTimer" style="font-size:11px;color:var(--text-muted,#7a9e86);margin-bottom:20px">Expires in <span id="broadcastCountdown"></span></div>' +
+      '<button onclick="closeBroadcastModal(\'' + msgId.replace(/'/g, "\\'") + '\')" style="width:100%;padding:14px;background:rgba(64,196,255,0.15);color:var(--blue,#40c4ff);font-size:14px;font-weight:700;border:1px solid rgba(64,196,255,0.3);border-radius:10px;cursor:pointer">Got it</button>' +
+      (isCurrentUserAdmin() ? '<button onclick="dismissBroadcast()" style="width:100%;padding:10px;background:transparent;color:var(--text-muted,#7a9e86);font-size:12px;border:none;cursor:pointer;margin-top:8px">Remove broadcast for everyone</button>' : '') +
+    '</div>';
+  document.body.appendChild(modal);
+
+  // Start countdown timer
+  _updateBroadcastCountdown(remaining);
+}
+
+function _updateBroadcastCountdown(remaining) {
+  var el = document.getElementById('broadcastCountdown');
+  if (!el) return;
+  if (remaining <= 0) {
+    _removeBroadcastModal();
+    return;
+  }
+  var mins = Math.floor(remaining / 60000);
+  var secs = Math.floor((remaining % 60000) / 1000);
+  el.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+  setTimeout(function() {
+    _updateBroadcastCountdown(remaining - 1000);
+  }, 1000);
+}
+
+function _removeBroadcastModal() {
+  var m = document.getElementById('broadcastModal');
+  if (m) m.remove();
+}
+
+window.closeBroadcastModal = function(msgId) {
+  _broadcastDismissedId = msgId;
+  _removeBroadcastModal();
+};
+
 window.dismissBroadcast = function() {
+  _removeBroadcastModal();
   if (typeof _firebaseDB !== 'undefined' && _firebaseDB) {
     _firebaseDB.ref('config/broadcast').remove();
   }
