@@ -438,7 +438,11 @@ function loadAllUsers() {
     _allUsers = Object.keys(data).map(function(username) {
       return { username: username, uid: data[username] };
     }).sort(function(a, b) { return a.username.localeCompare(b.username); });
-    renderUserList(_allUsers);
+    // Fetch all avatars then render
+    var uids = _allUsers.map(function(u) { return u.uid; });
+    fetchPlayerAvatars(uids, function() {
+      renderUserList(_allUsers);
+    });
   });
 }
 
@@ -460,11 +464,17 @@ function renderUserList(users) {
     var isAdminUser = isAdmin(u.username);
     var nameDisplay = isAdminUser ? '<span class="admin-name">' + u.username + '</span> &#128305;' : u.username;
     var safeUser = u.username.replace(/'/g, "\\'");
+    var avatar = playerAvatarHtml(u.uid, 32);
+    var initial = u.username.charAt(0).toUpperCase();
+    var avatarEl = avatar || '<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-elevated);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;border:1px solid var(--border)">' + initial + '</div>';
     html += '<div class="admin-user-item">' +
       '<div class="admin-user-header" onclick="toggleUserActions(\'' + safeUser + '\')">' +
-        '<div>' +
-          '<div class="admin-user-name">' + nameDisplay + '</div>' +
-          '<div class="admin-user-uid">' + u.uid + '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px">' +
+          avatarEl +
+          '<div>' +
+            '<div class="admin-user-name">' + nameDisplay + '</div>' +
+            '<div class="admin-user-uid">' + u.uid + '</div>' +
+          '</div>' +
         '</div>' +
         '<span class="admin-user-chevron" id="chevron_' + safeUser + '">&#9660;</span>' +
       '</div>' +
