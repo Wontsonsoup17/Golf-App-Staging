@@ -1507,26 +1507,29 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="date"]:focus
   gap: 8px;
 }
 .header-menu-btn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   padding: 4px;
-  border-radius: 6px;
-  transition: background 0.15s;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: rgba(255,255,255,0.04);
+  transition: all 0.15s;
+  flex-shrink: 0;
 }
-.header-menu-btn:active { background: rgba(255,255,255,0.08); }
+.header-menu-btn:active { background: rgba(255,255,255,0.1); border-color: var(--gold); }
 .header-menu-btn span {
   display: block;
   width: 18px;
   height: 2px;
   background: var(--text-muted);
-  border-radius: 1px;
+  border-radius: 2px;
   transition: background 0.15s;
 }
 .header-menu-btn:active span { background: var(--gold); }
