@@ -1439,6 +1439,11 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="date"]:focus
   padding: 10px 16px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 .user-info {
   display: flex;
