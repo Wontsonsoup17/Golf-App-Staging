@@ -107,7 +107,7 @@
             '<div class="course-meta">' +
               '<span class="pill">Par ' + c.par + '</span>' +
               '<span>' + Object.values(c.tees)[0].yards + ' yds</span>' +
-              '<span>' + c.phone + '</span>' +
+              '<a href="tel:' + c.phone.replace(/[^0-9+]/g, '') + '" class="book-tee-btn" onclick="event.stopPropagation()">&#128222; Book Tee Time</a>' +
             '</div>' +
             '<div class="course-address">' + c.address + '</div>' +
             (roundCount > 0 ? '<div class="rounds-badge">' + roundCount + ' round' + (roundCount !== 1 ? 's' : '') + ' played</div>' : '') +
