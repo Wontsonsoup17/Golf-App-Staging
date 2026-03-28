@@ -68,7 +68,7 @@
     // Load from Firebase (primary source), with localStorage as display-only fallback.
     // Rounds are saved to both Firebase and localStorage at creation time,
     // so we do NOT re-upload local-only rounds (that would undo server-side deletions).
-    fbLoadRounds(user.uid).then(fbRounds => {
+    _firebaseLoadPromise.then(function() { return fbLoadRounds(user.uid); }).then(fbRounds => {
       rounds = fbRounds;
       // Sync localStorage to match Firebase (clears stale local rounds)
       saveRounds(rounds);

@@ -55,8 +55,10 @@
       renderPersonalStats(localRounds, displayName);
     }
 
-    // Then load from Firebase (primary source) and re-render if different
-    fbLoadRounds(user.uid).then(function(fbRounds) {
+    // Wait for Firebase SDK to be fully loaded, then fetch rounds
+    _firebaseLoadPromise.then(function() {
+      return fbLoadRounds(user.uid);
+    }).then(function(fbRounds) {
       if (fbRounds.length) {
         // Sync localStorage to match Firebase
         saveRounds(fbRounds);
