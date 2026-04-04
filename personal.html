@@ -30,6 +30,7 @@
 <div class="main">
   <div class="stat-grid" id="statGrid"></div>
   <div id="chartSection"></div>
+  <div id="tipsSection"></div>
   <div id="courseStatsSection">
     <div class="waiting-players"><span class="spinner"></span> Loading stats...</div>
   </div>
@@ -94,6 +95,7 @@
     function renderPersonalStats(rounds, myName) {
       if (!rounds.length) {
         document.getElementById('statGrid').innerHTML = '';
+        document.getElementById('tipsSection').innerHTML = '';
         document.getElementById('courseStatsSection').innerHTML = '<div class="empty-state"><div class="icon">&#128100;</div><p>No rounds yet.<br><a href="index.html">Play a round</a> to see your personal stats.</p></div>';
         return;
       }
@@ -190,6 +192,9 @@
 
       // Score performance chart
       renderScoreChart(rounds, myName);
+
+      // Tips & insights
+      renderTips(rounds, myName);
 
       // Per-course breakdown — only my scores
       var courseHtml = '<div class="section-title" style="margin-top:8px">By Course</div>';
@@ -411,7 +416,7 @@
       });
 
       // Legend
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';  // keep existing
       ctx.font = '9px -apple-system, sans-serif';
       ctx.textAlign = 'left';
 
@@ -442,6 +447,255 @@
       ctx.font = 'bold 10px -apple-system, sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText(trendDir, ml + cw, mt + ch + 23);
+    }
+
+    function renderTips(rounds, myName) {
+      var container = document.getElementById('tipsSection');
+      if (!container) return;
+
+      // Aggregate tracking data across all valid rounds
+      var validRounds = 0;
+      var totalMulligans = 0, mulliganTee = 0, mulliganFairway = 0, mulliganGreen = 0;
+      var totalPenalties = 0, penaltyWater = 0, penaltyOB = 0, penaltyLateral = 0, penaltyUnplayable = 0;
+      var totalPutts = 0, totalPuttHoles = 0, threePutts = 0;
+      var totalGIR = 0, totalGIRChances = 0;
+      var par3Diffs = [], par4Diffs = [], par5Diffs = [];
+      var holeScoreVsPar = new Array(18).fill(0);
+      var holeCounts = new Array(18).fill(0);
+      var front9Totals = [], back9Totals = [];
+
+      rounds.forEach(function(r) {
+        var me = findMe(r, myName);
+        if (!me || !r.scores[me]) return;
+        var scores = r.scores[me];
+        var played = scores.filter(function(s) { return s > 0; }).length;
+        if (played < 9) return;
+        validRounds++;
+
+        var t = (r.tracking && r.tracking[me]) ? r.tracking[me] : null;
+
+        // Front/back 9 totals
+        var f9 = 0, f9c = 0, b9 = 0, b9c = 0;
+
+        for (var i = 0; i < 18; i++) {
+          if (scores[i] <= 0) continue;
+          var holePar = (r.holePars && r.holePars[i]) ? r.holePars[i] : 4;
+          var diff = scores[i] - holePar;
+
+          holeScoreVsPar[i] += diff;
+          holeCounts[i]++;
+
+          if (holePar === 3) par3Diffs.push(diff);
+          else if (holePar === 4) par4Diffs.push(diff);
+          else if (holePar === 5) par5Diffs.push(diff);
+
+          if (i < 9) { f9 += scores[i]; f9c++; }
+          else { b9 += scores[i]; b9c++; }
+
+          if (t) {
+            // Mulligans
+            var mCount = (t.mulligans && t.mulligans[i]) ? t.mulligans[i] : 0;
+            if (mCount > 0) {
+              totalMulligans += mCount;
+              var mLocs = t.mulliganLocations && t.mulliganLocations[i];
+              if (mLocs && Array.isArray(mLocs)) {
+                mLocs.forEach(function(loc) {
+                  if (loc === 'tee') mulliganTee++;
+                  else if (loc === 'fairway') mulliganFairway++;
+                  else if (loc === 'green') mulliganGreen++;
+                });
+              }
+            }
+
+            // Penalties / drops
+            var pCount = (t.penalties && t.penalties[i]) ? t.penalties[i] : 0;
+            if (pCount > 0) {
+              totalPenalties += pCount;
+              var pLocs = t.penaltyLocations && t.penaltyLocations[i];
+              if (pLocs && Array.isArray(pLocs)) {
+                pLocs.forEach(function(loc) {
+                  if (loc === 'water') penaltyWater++;
+                  else if (loc === 'ob') penaltyOB++;
+                  else if (loc === 'lateral') penaltyLateral++;
+                  else if (loc === 'unplayable') penaltyUnplayable++;
+                });
+              }
+            }
+
+            // Putts
+            if (t.putts && t.putts[i] > 0) {
+              totalPutts += t.putts[i];
+              totalPuttHoles++;
+              if (t.putts[i] >= 3) threePutts++;
+            }
+
+            // GIR
+            totalGIRChances++;
+            if (t.gir && t.gir[i]) totalGIR++;
+          }
+        }
+
+        if (f9c >= 7) front9Totals.push(f9);
+        if (b9c >= 7) back9Totals.push(b9);
+      });
+
+      if (validRounds === 0) { container.innerHTML = ''; return; }
+
+      var tips = [];
+
+      // --- Mulligan tip ---
+      if (totalMulligans > 0) {
+        var avgM = (totalMulligans / validRounds).toFixed(1);
+        var maxMLoc = Math.max(mulliganTee, mulliganFairway, mulliganGreen);
+        var topMLoc = maxMLoc === mulliganTee ? 'off the tee' :
+                      maxMLoc === mulliganFairway ? 'from the fairway' :
+                      maxMLoc === mulliganGreen ? 'on the green' : '';
+        var mAdvice = topMLoc === 'off the tee' ? 'Build a consistent pre-shot routine to improve tee shots and reduce do-overs.' :
+                      topMLoc === 'from the fairway' ? 'Focus on ball-striking from the fairway — take one more club and swing at 80%.' :
+                      topMLoc === 'on the green' ? 'Practice lag putting so you leave yourself tap-ins instead of taking do-overs.' :
+                      'Cutting mulligans is the fastest way to lower your score.';
+        tips.push({ icon: '🔄', title: 'Mulligan Tendency',
+          text: 'You average ' + avgM + ' mulligan' + (parseFloat(avgM) !== 1 ? 's' : '') + ' per round' + (topMLoc ? ', most taken ' + topMLoc : '') + '.',
+          advice: mAdvice, priority: totalMulligans * 1.5 });
+      }
+
+      // --- Drop/penalty tip ---
+      if (totalPenalties > 0) {
+        var avgP = (totalPenalties / validRounds).toFixed(1);
+        var maxPLoc = Math.max(penaltyWater, penaltyOB, penaltyLateral, penaltyUnplayable);
+        var topPType = maxPLoc === penaltyWater ? 'water hazards' :
+                       maxPLoc === penaltyOB ? 'OB shots' :
+                       maxPLoc === penaltyLateral ? 'lateral hazards' :
+                       maxPLoc === penaltyUnplayable ? 'unplayable lies' : '';
+        var pAdvice = topPType === 'water hazards' ? 'Lay up short of water on long carries. A safe bogey beats a penalty double.' :
+                      topPType === 'OB shots' ? 'Favor the safe side of tight holes off the tee — an iron in play beats a driver OB every time.' :
+                      topPType === 'unplayable lies' ? 'When in trouble, punch out sideways. Hero shots from unplayable lies rarely pay off.' :
+                      'Playing smarter off the tee reduces costly penalty strokes.';
+        tips.push({ icon: '🫳', title: 'Penalty Drops',
+          text: 'You average ' + avgP + ' drop' + (parseFloat(avgP) !== 1 ? 's' : '') + ' per round' + (topPType ? ', mostly from ' + topPType : '') + '.',
+          advice: pAdvice, priority: totalPenalties * 2 });
+      }
+
+      // --- Putting tip ---
+      if (totalPuttHoles > 0) {
+        var avgPutts = totalPutts / totalPuttHoles;
+        var threePuttPct = Math.round(threePutts / totalPuttHoles * 100);
+        if (avgPutts > 2.1) {
+          tips.push({ icon: '⛳', title: 'Putting is Costing You',
+            text: 'You average ' + avgPutts.toFixed(2) + ' putts per hole, and 3-putt ' + threePuttPct + '% of the time.',
+            advice: 'Work on lag putting — rolling long putts within 3 feet will eliminate most of your 3-putts.',
+            priority: (avgPutts - 2.0) * 25 });
+        } else if (avgPutts < 1.85) {
+          tips.push({ icon: '⛳', title: 'Elite Putter',
+            text: 'You average just ' + avgPutts.toFixed(2) + ' putts per hole — your putter is a weapon.',
+            advice: 'Hit more greens in regulation to fully capitalize on your putting ability.',
+            priority: 1 });
+        } else if (threePuttPct > 15) {
+          tips.push({ icon: '⛳', title: '3-Putts Adding Up',
+            text: 'You 3-putt ' + threePuttPct + '% of the time, which is costing you strokes.',
+            advice: 'Focus on speed control from long range — getting the ball close from 30+ feet is more valuable than line.',
+            priority: threePuttPct * 0.4 });
+        }
+      }
+
+      // --- GIR tip ---
+      if (totalGIRChances >= 9) {
+        var girPct = Math.round(totalGIR / totalGIRChances * 100);
+        if (girPct < 20) {
+          tips.push({ icon: '🎯', title: 'Approach Shots Need Work',
+            text: 'You hit only ' + girPct + '% of greens in regulation.',
+            advice: 'Take one extra club on approach shots and focus on the center of the green — short misses kill scoring.',
+            priority: (25 - girPct) * 0.6 });
+        } else if (girPct >= 40) {
+          tips.push({ icon: '🎯', title: 'Sharp Iron Game',
+            text: 'You hit ' + girPct + '% of greens in regulation — well above average.',
+            advice: 'Your iron game is a strength. Keep converting those GIRs into pars and birdies.',
+            priority: 1 });
+        }
+      }
+
+      // --- Front 9 vs Back 9 ---
+      if (front9Totals.length >= 2 && back9Totals.length >= 2) {
+        var f9Avg = front9Totals.reduce(function(a,b){return a+b;},0) / front9Totals.length;
+        var b9Avg = back9Totals.reduce(function(a,b){return a+b;},0) / back9Totals.length;
+        var halfDiff = Math.abs(f9Avg - b9Avg);
+        if (halfDiff >= 2) {
+          var stronger = f9Avg < b9Avg ? 'front 9' : 'back 9';
+          var weaker = stronger === 'front 9' ? 'back 9' : 'front 9';
+          var fAdvice = stronger === 'front 9'
+            ? 'You tend to fade after the turn — stay hydrated, keep your pre-shot routine, and treat the back 9 like a fresh round.'
+            : 'You start slowly but finish strong — try bringing that back-9 energy and focus to your very first holes.';
+          tips.push({ icon: '📊', title: 'Front vs Back 9',
+            text: 'Your ' + stronger + ' averages ' + halfDiff.toFixed(1) + ' fewer strokes than your ' + weaker + '.',
+            advice: fAdvice, priority: halfDiff * 1.5 });
+        }
+      }
+
+      // --- Par type tips ---
+      function parAvg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : null; }
+      var p3avg = parAvg(par3Diffs), p4avg = parAvg(par4Diffs), p5avg = parAvg(par5Diffs);
+      var parTypes = [];
+      if (p3avg !== null) parTypes.push({ label: 'Par 3s', avg: p3avg, type: 3 });
+      if (p4avg !== null) parTypes.push({ label: 'Par 4s', avg: p4avg, type: 4 });
+      if (p5avg !== null) parTypes.push({ label: 'Par 5s', avg: p5avg, type: 5 });
+
+      if (parTypes.length > 0) {
+        parTypes.sort(function(a,b){ return b.avg - a.avg; });
+        var worst = parTypes[0];
+        if (worst.avg > 1.8) {
+          var ptAdvice = worst.type === 3 ? 'Par 3s are all about iron accuracy — pick a specific target and commit. Miss toward the fat part of the green.' :
+                         worst.type === 4 ? 'Par 4s set the tone for your round — prioritize fairways over distance off the tee.' :
+                         'Par 5s are scoring holes — get to the green in 3 and you\'ll always have a putt for birdie.';
+          tips.push({ icon: '⚠️', title: worst.label + ' Struggles',
+            text: 'You average +' + worst.avg.toFixed(1) + ' on ' + worst.label.toLowerCase() + ', your toughest hole type.',
+            advice: ptAdvice, priority: worst.avg * 3 });
+        }
+        var best = parTypes[parTypes.length - 1];
+        if (best.avg < 1.2 && best.label !== worst.label) {
+          tips.push({ icon: '💪', title: best.label + ' Strength',
+            text: 'You average +' + best.avg.toFixed(1) + ' on ' + best.label.toLowerCase() + ' — your strongest hole type.',
+            advice: 'Use your strength on ' + best.label.toLowerCase() + ' to build momentum heading into tougher holes.',
+            priority: 1 });
+        }
+      }
+
+      // --- Worst holes ---
+      var worstHoles = [];
+      for (var i = 0; i < 18; i++) {
+        if (holeCounts[i] >= 2) {
+          var ha = holeScoreVsPar[i] / holeCounts[i];
+          if (ha > 1.5) worstHoles.push({ hole: i + 1, avg: ha });
+        }
+      }
+      if (worstHoles.length > 0) {
+        worstHoles.sort(function(a,b){ return b.avg - a.avg; });
+        var top = worstHoles.slice(0, 3);
+        var hStr = top.map(function(h){ return '#' + h.hole + ' (+' + h.avg.toFixed(1) + ')'; }).join(', ');
+        tips.push({ icon: '🔥', title: 'Consistent Trouble Holes',
+          text: 'Hole' + (top.length > 1 ? 's ' : ' ') + hStr + ' give you the most trouble on average.',
+          advice: 'On these holes, set your goal at bogey. A smart bogey beats a scrambling double any day.',
+          priority: worstHoles[0].avg * 3.5 });
+      }
+
+      if (tips.length === 0) { container.innerHTML = ''; return; }
+
+      // Sort by priority, cap at 5
+      tips.sort(function(a,b){ return b.priority - a.priority; });
+      var show = tips.slice(0, 5);
+
+      var html = '<div class="section-title" style="margin-top:8px">Tips & Insights</div>';
+      show.forEach(function(tip) {
+        html +=
+          '<div class="history-card" style="margin-bottom:10px">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
+              '<span style="font-size:18px">' + tip.icon + '</span>' +
+              '<strong style="font-size:13px;color:var(--text-bright)">' + tip.title + '</strong>' +
+            '</div>' +
+            '<p style="font-size:12px;color:var(--text-muted);margin:0 0 5px 0">' + tip.text + '</p>' +
+            '<p style="font-size:12px;color:#00e676;margin:0">&#128161; ' + tip.advice + '</p>' +
+          '</div>';
+      });
+      container.innerHTML = html;
     }
   });
 </script>
