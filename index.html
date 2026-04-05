@@ -80,9 +80,10 @@
 
     // Populate course dropdown
     var courseSelect = document.getElementById('createCourseSelect');
-    courseSelect.innerHTML = COURSES.map(function(c) {
-      return '<option value="' + c.id + '">' + c.name + ' (Par ' + c.par + ')</option>';
-    }).join('');
+    courseSelect.innerHTML = '<option value="" disabled selected style="color:#666">— Choose a Course —</option>' +
+      COURSES.map(function(c) {
+        return '<option value="' + c.id + '">' + c.name + ' (Par ' + c.par + ')</option>';
+      }).join('');
 
     // Render game type section — admin only for now
     var gameTypeSection = document.getElementById('gameTypeSection');
