@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "golf-app",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8080"],
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["-e", "require('http').createServer((req,res)=>{var fs=require('fs'),path=require('path'),url=require('url');var f=path.join('/Users/claudeagent/Desktop/PERSONAL/Claude Personal/golf-app',url.parse(req.url).pathname);if(f.endsWith('/')||!fs.existsSync(f))f=path.join('/Users/claudeagent/Desktop/PERSONAL/Claude Personal/golf-app','index.html');res.writeHead(200,{'Content-Type':f.endsWith('.html')?'text/html':f.endsWith('.js')?'application/javascript':f.endsWith('.css')?'text/css':'application/octet-stream','Cache-Control':'no-store'});fs.createReadStream(f).pipe(res);}).listen(8080)"],
       "port": 8080
     }
   ]

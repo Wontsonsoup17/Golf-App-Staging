@@ -1,12 +1,10 @@
 // ==================== AUTO-UPDATE CHECK ====================
-// When a new version is deployed, sets a flag before reloading so the
-// update popup can show automatically after login — no Firebase config needed.
-var APP_VERSION = '165';
+// Forces a hard reload when a new version is deployed so users always
+// get fresh files. The popup is handled separately via checkUpdatePopup.
+var APP_VERSION = '166';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
-    // Mark that an update just happened so we can show the popup after reload
-    localStorage.setItem('_update_pending', '1');
     localStorage.setItem('app_version', APP_VERSION);
     if (window.caches) {
       caches.keys().then(function(names) {
@@ -23,11 +21,22 @@ var APP_VERSION = '165';
 })();
 
 // ==================== UPDATE POPUP ====================
-// Automatically shows after any version bump. No Firebase config required.
+// Shows once per version bump, on every login, until the user taps Apply Update.
+// Compares APP_VERSION against app_v_notified (last version user was notified about).
+// Just bump APP_VERSION above to trigger the popup for all users on next login.
 window.checkUpdatePopup = function() {
-  if (localStorage.getItem('_update_pending') !== '1') return;
-  localStorage.removeItem('_update_pending');
+  var notified = localStorage.getItem('app_v_notified');
 
+  // First-ever install — set silently, no popup
+  if (!notified) {
+    localStorage.setItem('app_v_notified', APP_VERSION);
+    return;
+  }
+
+  // Already up to date
+  if (notified === APP_VERSION) return;
+
+  // New version detected — show popup
   if (document.getElementById('versionUpdateModal')) return;
 
   var modal = document.createElement('div');
@@ -37,9 +46,9 @@ window.checkUpdatePopup = function() {
     '<div style="background:var(--card-bg,#1a2e1a);border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:32px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
       '<div style="font-size:48px;margin-bottom:12px">&#x1F504;</div>' +
       '<h3 style="color:#fff;font-size:20px;margin-bottom:8px">New Update Available</h3>' +
-      '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.6;margin-bottom:24px">A new version of Westchester Golf has been installed. Tap below to apply the update and get the latest features.</p>' +
+      '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.6;margin-bottom:24px">A new version of Westchester Golf is ready. Tap below to apply the update and get the latest features.</p>' +
       '<button onclick="forceVersionUpdate()" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-bottom:10px">&#x1F504; Apply Update</button>' +
-      '<button onclick="document.getElementById(\'versionUpdateModal\').remove()" style="width:100%;padding:10px;background:transparent;color:var(--text-muted,#999);font-size:13px;border:none;cursor:pointer">Maybe Later</button>' +
+      '<button onclick="localStorage.setItem(\'app_v_notified\',\'' + APP_VERSION + '\');document.getElementById(\'versionUpdateModal\').remove()" style="width:100%;padding:10px;background:transparent;color:var(--text-muted,#999);font-size:13px;border:none;cursor:pointer">Maybe Later</button>' +
     '</div>';
   document.body.appendChild(modal);
 };
