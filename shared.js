@@ -1,52 +1,72 @@
 // ==================== AUTO-UPDATE CHECK ====================
-// Forces a hard reload when a new version is deployed
-var APP_VERSION = '164';
+// When a new version is deployed, sets a flag before reloading so the
+// update popup can show automatically after login — no Firebase config needed.
+var APP_VERSION = '165';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
-    // Version changed — clear browser caches and force reload
+    // Mark that an update just happened so we can show the popup after reload
+    localStorage.setItem('_update_pending', '1');
     localStorage.setItem('app_version', APP_VERSION);
     if (window.caches) {
       caches.keys().then(function(names) {
         names.forEach(function(name) { caches.delete(name); });
-      }).then(function() {
-        window.location.reload(true);
-      });
+      }).then(function() { window.location.reload(true); });
     } else {
       window.location.reload(true);
     }
-    return; // Stop executing — page will reload
+    return;
   }
   if (!storedVersion) {
     localStorage.setItem('app_version', APP_VERSION);
   }
 })();
 
+// ==================== UPDATE POPUP ====================
+// Automatically shows after any version bump. No Firebase config required.
+window.checkUpdatePopup = function() {
+  if (localStorage.getItem('_update_pending') !== '1') return;
+  localStorage.removeItem('_update_pending');
+
+  if (document.getElementById('versionUpdateModal')) return;
+
+  var modal = document.createElement('div');
+  modal.id = 'versionUpdateModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+  modal.innerHTML =
+    '<div style="background:var(--card-bg,#1a2e1a);border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:32px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
+      '<div style="font-size:48px;margin-bottom:12px">&#x1F504;</div>' +
+      '<h3 style="color:#fff;font-size:20px;margin-bottom:8px">New Update Available</h3>' +
+      '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.6;margin-bottom:24px">A new version of Westchester Golf has been installed. Tap below to apply the update and get the latest features.</p>' +
+      '<button onclick="forceVersionUpdate()" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-bottom:10px">&#x1F504; Apply Update</button>' +
+      '<button onclick="document.getElementById(\'versionUpdateModal\').remove()" style="width:100%;padding:10px;background:transparent;color:var(--text-muted,#999);font-size:13px;border:none;cursor:pointer">Maybe Later</button>' +
+    '</div>';
+  document.body.appendChild(modal);
+};
+
 // ==================== FIREBASE VERSION CHECK ====================
-// Checks Firebase for the required minimum version. If the user's
-// local version is outdated, shows a blocking modal, signs them out,
-// and sends them to force-update.html.
+// Emergency override: set config/requiredVersion in Firebase to force
+// all users below that version to update immediately (blocking modal).
 window.checkRequiredVersion = function() {
   if (typeof _firebaseDB === 'undefined' || !_firebaseDB) return;
   _firebaseDB.ref('config/requiredVersion').once('value').then(function(snap) {
     if (!snap.exists()) return;
     var required = parseInt(snap.val(), 10);
     var local = parseInt(APP_VERSION, 10);
-    if (isNaN(required) || isNaN(local)) return;
-    if (local >= required) return;
+    if (isNaN(required) || isNaN(local) || local >= required) return;
 
-    // Outdated — show blocking modal
-    var old = document.getElementById('versionUpdateModal');
-    if (old) return; // already showing
+    // Force update — remove the dismissible popup if showing, replace with blocking one
+    var existing = document.getElementById('versionUpdateModal');
+    if (existing) existing.remove();
 
     var modal = document.createElement('div');
     modal.id = 'versionUpdateModal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
     modal.innerHTML =
       '<div style="background:var(--card-bg,#1a2e1a);border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:32px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
         '<div style="font-size:48px;margin-bottom:12px">&#x1F504;</div>' +
         '<h3 style="color:#fff;font-size:20px;margin-bottom:8px">Update Required</h3>' +
-        '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.5;margin-bottom:24px">A new version of Westchester Golf is available. Please update to continue using the app.</p>' +
+        '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.5;margin-bottom:24px">A required update is available. Please update to continue using the app.</p>' +
         '<button onclick="forceVersionUpdate()" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer">Update Now</button>' +
       '</div>';
     document.body.appendChild(modal);
@@ -54,7 +74,6 @@ window.checkRequiredVersion = function() {
 };
 
 window.forceVersionUpdate = function() {
-  // Sign out and redirect to force-update
   if (typeof auth !== 'undefined' && auth.signOut) {
     auth.signOut().then(function() {
       window.location.href = 'force-update.html';

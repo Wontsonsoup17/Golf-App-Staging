@@ -684,10 +684,14 @@ function requireAuth(callback) {
       // Restore avatar from Firebase if missing locally (e.g. after cache clear)
       restoreAvatarFromFirebase(user.uid);
       callback(user);
-      // Check for required version update
+      // Show update popup automatically if a new version was just installed
+      setTimeout(function() {
+        if (typeof checkUpdatePopup === 'function') checkUpdatePopup();
+      }, 800);
+      // Emergency override: Firebase-controlled forced update
       setTimeout(function() {
         if (typeof checkRequiredVersion === 'function') checkRequiredVersion();
-      }, 500);
+      }, 1200);
       // Prompt for security question setup after page loads
       setTimeout(function() {
         if (typeof checkSecurityQuestionPrompt === 'function') checkSecurityQuestionPrompt();
