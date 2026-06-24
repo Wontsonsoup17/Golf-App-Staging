@@ -789,7 +789,7 @@ function playerAvatarHtml(uid, size) {
   if (url) {
     return '<img src="' + url + '" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;vertical-align:middle">';
   }
-  return '';
+  return '<img src="images/golf-tracker-logo.png?v=2" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:contain;background:#0d1812;flex-shrink:0;vertical-align:middle">';
 }
 
 // Get avatar by player name (needs nameToUid map from round data)
