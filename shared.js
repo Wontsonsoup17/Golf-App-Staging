@@ -1354,11 +1354,11 @@ function renderBottomNav(activePage) {
   var groupCode = localStorage.getItem('active-group-code');
   var liveHref = groupCode ? 'live-game.html?group=' + groupCode : 'live-game.html';
   const pages = [
-    { id: 'courses',  label: 'Courses',  icon: '&#9971;',   href: 'index.html' },
-    { id: 'live',     label: 'Live',     icon: '&#127942;', href: liveHref },
-    { id: 'history',  label: 'History',  icon: '&#128203;', href: 'history.html' },
-    { id: 'stats',    label: 'Board',  icon: '&#128202;', href: 'stats.html' },
-    { id: 'personal', label: 'Personal', icon: '&#128100;', href: 'personal.html' }
+    { id: 'courses',  label: 'Courses',  icon: '<img src="images/ic-courses.png" class="nav-img" alt="">',   href: 'index.html' },
+    { id: 'live',     label: 'Live',     icon: '<img src="images/ic-live.png" class="nav-img" alt="">', href: liveHref },
+    { id: 'history',  label: 'History',  icon: '<img src="images/ic-history.png" class="nav-img" alt="">', href: 'history.html' },
+    { id: 'stats',    label: 'Board',  icon: '<img src="images/ic-board.png" class="nav-img" alt="">', href: 'stats.html' },
+    { id: 'personal', label: 'Personal', icon: '<img src="images/ic-personal.png" class="nav-img" alt="">', href: 'personal.html' }
   ];
   nav.innerHTML = pages.map(p => `
     <a href="${p.href}" class="${p.id === activePage ? 'active' : ''}">
