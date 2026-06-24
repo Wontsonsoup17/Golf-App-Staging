@@ -205,6 +205,7 @@ body { display: flex; flex-direction: column; }
 </style>
 </head>
 <body>
+<div class="user-header" id="userHeader"></div>
 
 <div class="header">
   <h1>Leaderboard</h1>
@@ -228,6 +229,7 @@ body { display: flex; flex-direction: column; }
 <script>
 requireAuth(function(user) {
   renderBottomNav('stats');
+  renderUserHeader(user);
   renderActiveRoundBanner();
   renderBroadcastBanner();
 

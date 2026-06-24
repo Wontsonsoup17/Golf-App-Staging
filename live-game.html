@@ -293,6 +293,7 @@
 </style>
 </head>
 <body>
+<div class="user-header" id="userHeader"></div>
 
 <div class="header" id="pageHeader">
   <h1 id="courseName">Live Game</h1>
@@ -329,6 +330,7 @@
 <script>
   requireAuth(function(user) {
     renderBottomNav('live');
+    renderUserHeader(user);
     renderBroadcastBanner();
     renderRoundBroadcastListener();
 

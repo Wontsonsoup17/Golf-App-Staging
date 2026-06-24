@@ -2781,3 +2781,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .see-courses-btn:active { background:var(--bg-card-hover); transform:scale(0.99); }
 .see-courses-btn .menu-icon { font-size:18px; }
 .see-courses-btn .sc-chevron { font-size:12px; }
+
+/* Persistent menu bar: page title header flows below it */
+.user-header ~ .header { position: static; top: auto; }

@@ -57,6 +57,7 @@
 </style>
 </head>
 <body>
+<div class="user-header" id="userHeader"></div>
 
 <div class="header" id="pageHeader">
   <h1 id="courseName">Live Round</h1>
@@ -327,6 +328,7 @@
 
   requireAuth(function(user) {
     renderBottomNav('courses');
+    renderUserHeader(user);
     renderBroadcastBanner();
     renderRoundBroadcastListener();
 
