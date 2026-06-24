@@ -976,8 +976,6 @@ function renderUserHeader(user) {
       '</div>' +
     '</div>' +
     '<div class="header-actions" id="headerActions">' +
-      '<div class="header-action-btn" onclick="openNukeModal()" role="button" aria-label="Clear cache">\uD83D\uDCA3</div>' +
-      '<div class="header-action-btn" onclick="openSupportModal()" role="button" aria-label="Report issue">\u26A0\uFE0F</div>' +
     '</div>' +
     '<input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">';
 
@@ -1014,6 +1012,9 @@ function renderUserHeader(user) {
       '<button class="profile-menu-item" onclick="handleChangeUsernameModal()"><span class="menu-icon">&#9998;</span> Change Username</button>' +
       '<button class="profile-menu-item" onclick="handleChangePasswordModal()"><span class="menu-icon">&#128274;</span> Change Password</button>' +
       '<button class="profile-menu-item" onclick="handleSecurityQuestionModal()"><span class="menu-icon">&#128737;</span> Security Question</button>' +
+      '<div class="profile-menu-separator"></div>' +
+      '<button class="profile-menu-item" onclick="closeProfilePanel();openNukeModal()"><span class="menu-icon">&#128163;</span> Force Update</button>' +
+      '<button class="profile-menu-item" onclick="closeProfilePanel();openSupportModal()"><span class="menu-icon">&#9888;&#65039;</span> Support</button>' +
       '<div class="profile-menu-separator"></div>' +
       '<button class="profile-menu-item danger" onclick="signOut()"><span class="menu-icon">&#128682;</span> Sign Out</button>' +
     '</div>';
