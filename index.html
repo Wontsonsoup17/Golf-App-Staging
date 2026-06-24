@@ -68,10 +68,13 @@
   </div>
   </div>
 
-  <div class="section-title">Westchester County</div>
-  <div id="courseGrid"></div>
-  <div class="section-title" style="margin-top:24px;text-align:center">Other Courses</div>
-  <div id="otherCourseGrid"></div>
+  <button class="see-courses-btn" id="seeCoursesBtn" onclick="toggleCourses()"><span class="menu-icon">&#9971;</span> <span class="sc-label" id="scLabel">See Courses</span> <span class="sc-chevron" id="scChevron">&#9662;</span></button>
+  <div id="coursesPanel" style="display:none">
+    <div class="section-title">Westchester County</div>
+    <div id="courseGrid"></div>
+    <div class="section-title" style="margin-top:24px;text-align:center">Other Courses</div>
+    <div id="otherCourseGrid"></div>
+  </div>
 </div>
 
 <nav class="bottom-nav" id="bottomNav"></nav>
@@ -314,6 +317,16 @@ function switchAction(which){
   if(jp) jp.style.display = which==="create" ? "none" : "";
   if(cp) cp.style.display = which==="create" ? "" : "none";
   document.querySelectorAll(".action-tab").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-target")===(which+"Panel")); });
+}
+</script>
+<script>
+function toggleCourses(){
+  var p=document.getElementById("coursesPanel"); if(!p) return;
+  var open=(p.style.display==="none");
+  p.style.display=open?"":"none";
+  var lab=document.getElementById("scLabel"); if(lab) lab.textContent=open?"Hide Courses":"See Courses";
+  var ch=document.getElementById("scChevron"); if(ch) ch.innerHTML=open?"&#9652;":"&#9662;";
+  if(open) setTimeout(function(){ p.scrollIntoView({behavior:"smooth",block:"nearest"}); },60);
 }
 </script>
 </body>
