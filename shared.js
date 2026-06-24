@@ -956,10 +956,10 @@ function renderUserHeader(user) {
   const avatarUrl = getUserAvatar(user.uid);
   const avatarContent = avatarUrl
     ? '<img src="' + avatarUrl + '" class="user-avatar-img">'
-    : initial;
+    : '<img src="images/golf-tracker-logo.png?v=2" class="user-avatar-img">';
 
   var isAdminUser = isAdmin(name);
-  var avatarClass = 'user-avatar' + (avatarUrl ? ' has-image' : '') + (isAdminUser ? ' admin-avatar' : '');
+  var avatarClass = 'user-avatar' + (avatarUrl ? ' has-image' : ' has-image logo-avatar') + (isAdminUser ? ' admin-avatar' : '');
   var nameHtml = isAdminUser ? '<span class="admin-name">' + name + '</span>' + adminBadge(name, 12) : name;
 
   // Header shows menu button + avatar+name on left, utility buttons on right
@@ -987,7 +987,7 @@ function renderUserHeader(user) {
 
   var panelAvatarContent = avatarUrl
     ? '<img src="' + avatarUrl + '">'
-    : initial;
+    : '<img src="images/golf-tracker-logo.png?v=2">';
 
   var backdrop = document.createElement('div');
   backdrop.className = 'profile-backdrop';
@@ -1000,7 +1000,7 @@ function renderUserHeader(user) {
   panel.id = 'profilePanel';
   panel.innerHTML =
     '<div class="profile-panel-header">' +
-      '<div class="profile-panel-avatar' + (avatarUrl ? ' has-image' : '') + (isAdminUser ? ' admin-avatar' : '') + '">' +
+      '<div class="profile-panel-avatar' + (avatarUrl ? ' has-image' : ' has-image logo-avatar') + (isAdminUser ? ' admin-avatar' : '') + '">' +
         panelAvatarContent +
       '</div>' +
       '<div class="profile-panel-name">' + (isAdminUser ? '<span class="admin-name">' + name + '</span>' + adminBadge(name, 16) : name) + '</div>' +

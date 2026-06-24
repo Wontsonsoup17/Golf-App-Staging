@@ -2792,3 +2792,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 
 /* Logo in live-game empty/loading states */
 .empty-state .empty-logo { width:120px; max-width:55%; height:auto; display:block; margin:0 auto; }
+
+/* Default avatar = Golf Tracker logo when no photo set */
+.user-avatar.logo-avatar { background: #0d1812; }
+.user-avatar.logo-avatar .user-avatar-img { object-fit: contain; padding: 3px; }
+.profile-panel-avatar.logo-avatar { background: #0d1812; }
+.profile-panel-avatar.logo-avatar img { object-fit: contain; padding: 7px; }
