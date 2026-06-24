@@ -1,0 +1,30 @@
+<svg viewBox="0 0 260 188" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Golf Tracker">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6cd86"/>
+      <stop offset="0.5" stop-color="#c9a24b"/>
+      <stop offset="1" stop-color="#9c7a30"/>
+    </linearGradient>
+  </defs>
+  <circle cx="130" cy="92" r="78" fill="none" stroke="url(#gold)" stroke-width="2" opacity="0.35"/>
+  <path d="M58 44 A86 86 0 0 1 202 44" fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M58 140 A86 86 0 0 0 202 140" fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  <g stroke="url(#gold)" stroke-width="3.2" stroke-linecap="round" fill="none">
+    <path d="M104 82 C82 62 56 58 30 62"/>
+    <path d="M106 94 C80 80 50 80 22 86"/>
+    <path d="M108 106 C84 100 58 104 34 116"/>
+  </g>
+  <g stroke="url(#gold)" stroke-width="3.2" stroke-linecap="round" fill="none">
+    <path d="M156 82 C178 62 204 58 230 62"/>
+    <path d="M154 94 C180 80 210 80 238 86"/>
+    <path d="M152 106 C176 100 202 104 226 116"/>
+  </g>
+  <circle cx="130" cy="94" r="33" fill="#f3efe2" stroke="url(#gold)" stroke-width="2.5"/>
+  <g fill="#d8d2c2" opacity="0.55">
+    <circle cx="120" cy="84" r="2.4"/><circle cx="131" cy="82" r="2.4"/><circle cx="142" cy="86" r="2.4"/>
+    <circle cx="116" cy="95" r="2.4"/><circle cx="127" cy="93" r="2.4"/><circle cx="138" cy="95" r="2.4"/><circle cx="148" cy="97" r="2.4"/>
+    <circle cx="121" cy="105" r="2.4"/><circle cx="132" cy="104" r="2.4"/><circle cx="143" cy="107" r="2.4"/>
+  </g>
+  <text x="138" y="116" text-anchor="middle" font-family="Georgia, 'Playfair Display', serif" font-size="62" font-weight="700" fill="url(#gold)">G</text>
+  <text x="130" y="178" text-anchor="middle" font-family="Georgia, 'Playfair Display', serif" font-size="22" font-weight="700" letter-spacing="3" fill="url(#gold)">GOLF TRACKER</text>
+</svg>

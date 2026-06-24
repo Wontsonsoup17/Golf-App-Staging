@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<style>html,body{background:#0a0f0d}</style>
+<style>html,body{background:#132017}</style>
 <script>
-(function(){var v='166';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='195';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0a0f0d">
+<meta name="theme-color" content="#132017">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>My Stats - Westchester Golf</title>
-<link rel="stylesheet" href="shared.css?v=166">
+<title>My Stats - Golf Tracker</title>
+<link rel="stylesheet" href="shared.css?v=195">
 </head>
 <body>
 
@@ -38,9 +38,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=166"></script>
-<script src="shared.js?v=166"></script>
-<script src="firebase-sync.js?v=166"></script>
+<script src="firebase-config.js?v=195"></script>
+<script src="shared.js?v=195"></script>
+<script src="firebase-sync.js?v=195"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('personal');
@@ -92,6 +92,13 @@
       return null;
     }
 
+    // Shared helpers — used by renderPersonalStats, renderScoreChart, and renderTips
+    function getParPlayed(r, me) {
+      if (!r.holePars) return r.par || 72;
+      return r.holePars.reduce(function(acc, hp, i) { return acc + (r.scores[me][i] > 0 ? hp : 0); }, 0);
+    }
+    function fmtToPar(n) { return n === 0 ? 'E' : (n > 0 ? '+' + n : n.toString()); }
+
     function renderPersonalStats(rounds, myName) {
       if (!rounds.length) {
         document.getElementById('statGrid').innerHTML = '';
@@ -100,8 +107,9 @@
         return;
       }
 
-      // Find my stats across all rounds
-      var myRounds = 0, myTotalScore = 0, myBest = Infinity, coursesPlayed = new Set();
+      // Find my stats across all rounds — all score comparisons use score-to-par for holes played
+
+      var myRounds = 0, myTotalScore = 0, myTotalPar = 0, myBestToPar = Infinity, coursesPlayed = new Set();
 
       rounds.forEach(function(r) {
         var me = findMe(r, myName);
@@ -113,14 +121,19 @@
         var played = scores.filter(function(s) { return s > 0; }).length;
 
         if (total > 0 && played >= 9) {
+          var pp = getParPlayed(r, me);
+          var toPar = total - pp;
           myRounds++;
           myTotalScore += total;
-          if (total < myBest) myBest = total;
+          myTotalPar += pp;
+          if (toPar < myBestToPar) myBestToPar = toPar;
           if (r.courseId) coursesPlayed.add(r.courseId);
         }
       });
 
-      var myAvg = myRounds > 0 ? (myTotalScore / myRounds).toFixed(1) : '-';
+      var myAvgToParNum = myRounds > 0 ? (myTotalScore - myTotalPar) / myRounds : null;
+      var myAvg = myAvgToParNum !== null ? (myAvgToParNum >= 0 ? '+' : '') + myAvgToParNum.toFixed(1) : '-';
+      var myBestStr = myBestToPar < Infinity ? fmtToPar(myBestToPar) : '-';
 
       // Calculate tracking stats: fairway %, GIR %, avg putts, handicap estimate
       var totalFwHit = 0, totalFwChances = 0, totalGirHit = 0, totalGirChances = 0;
@@ -168,7 +181,7 @@
           var total = r.scores[me].reduce(function(a, b) { return a + b; }, 0);
           var played = r.scores[me].filter(function(s) { return s > 0; }).length;
           if (total > 0 && played >= 9) {
-            var par = r.par || 72;
+            var par = getParPlayed(r, me);
             diffs.push(total - par);
           }
         });
@@ -184,8 +197,8 @@
 
       document.getElementById('statGrid').innerHTML =
         '<div class="stat-box"><div class="stat-value">' + myRounds + '</div><div class="stat-label">Rounds</div></div>' +
-        '<div class="stat-box"><div class="stat-value">' + (myBest < Infinity ? myBest : '-') + '</div><div class="stat-label">Best Score</div></div>' +
-        '<div class="stat-box"><div class="stat-value">' + myAvg + '</div><div class="stat-label">Avg Score</div></div>' +
+        '<div class="stat-box"><div class="stat-value">' + myBestStr + '</div><div class="stat-label">Best (to par)</div></div>' +
+        '<div class="stat-box"><div class="stat-value">' + myAvg + '</div><div class="stat-label">Avg (to par)</div></div>' +
         '<div class="stat-box"><div class="stat-value">' + handicap + '</div><div class="stat-label">Handicap</div></div>' +
         '<div class="stat-box"><div class="stat-value">' + avgPutts + '</div><div class="stat-label">Avg Putts</div></div>' +
         '<div class="stat-box"><div class="stat-value">' + coursesPlayed.size + '</div><div class="stat-label">Courses</div></div>';
@@ -204,7 +217,7 @@
         var courseRounds = rounds.filter(function(r) { return r.courseId === c.id; });
         if (!courseRounds.length) return;
 
-        var myCourseBest = Infinity, myCourseTotal = 0, myCourseRounds = 0;
+        var myCourseBestToPar = Infinity, myCourseTotalScore = 0, myCourseTotalPar = 0, myCourseRounds = 0;
 
         courseRounds.forEach(function(r) {
           var me = findMe(r, myName);
@@ -214,16 +227,20 @@
           var played = r.scores[me].filter(function(s) { return s > 0; }).length;
 
           if (total > 0 && played >= 9) {
+            var pp = getParPlayed(r, me);
+            var toPar = total - pp;
             myCourseRounds++;
-            myCourseTotal += total;
-            if (total < myCourseBest) myCourseBest = total;
+            myCourseTotalScore += total;
+            myCourseTotalPar += pp;
+            if (toPar < myCourseBestToPar) myCourseBestToPar = toPar;
           }
         });
 
         if (myCourseRounds === 0) return;
         any = true;
 
-        var myCourseAvg = (myCourseTotal / myCourseRounds).toFixed(0);
+        var myCourseAvgToPar = (myCourseTotalScore - myCourseTotalPar) / myCourseRounds;
+        var myCourseAvgStr = (myCourseAvgToPar >= 0 ? '+' : '') + myCourseAvgToPar.toFixed(1);
 
         courseHtml +=
           '<div class="history-card">' +
@@ -234,12 +251,12 @@
             '</div>' +
             '<div class="history-scores" style="margin-top:8px">' +
               '<div class="history-score-row">' +
-                '<span>Best</span>' +
-                '<span><strong>' + myCourseBest + '</strong></span>' +
+                '<span>Best (to par)</span>' +
+                '<span><strong>' + fmtToPar(myCourseBestToPar) + '</strong></span>' +
               '</div>' +
               '<div class="history-score-row">' +
-                '<span>Average</span>' +
-                '<span>' + myCourseAvg + '</span>' +
+                '<span>Average (to par)</span>' +
+                '<span>' + myCourseAvgStr + '</span>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -251,7 +268,7 @@
     function renderScoreChart(rounds, myName) {
       var container = document.getElementById('chartSection');
 
-      // Collect data points: { date, score, courseName, par }
+      // Collect data points: { date, score (to par), courseName, holesPlayed }
       var points = [];
       rounds.forEach(function(r) {
         var me = findMe(r, myName);
@@ -259,11 +276,12 @@
         var total = r.scores[me].reduce(function(a, b) { return a + b; }, 0);
         var played = r.scores[me].filter(function(s) { return s > 0; }).length;
         if (total > 0 && played >= 9) {
+          var pp = getParPlayed(r, me);
           points.push({
             date: new Date(r.date),
-            score: total,
-            courseName: r.courseName || 'Unknown',
-            par: r.par || 72
+            score: total - pp,
+            holesPlayed: played,
+            courseName: r.courseName || 'Unknown'
           });
         }
       });
@@ -298,11 +316,12 @@
       var cw = W - ml - mr;
       var ch = H - mt - mb;
 
-      // Score range — inverted: 0 at top, max at bottom (lower = better in golf)
+      // Score-to-par range — lower = better in golf
       var scores = points.map(function(p) { return p.score; });
+      var minS = Math.min.apply(null, scores);
       var maxS = Math.max.apply(null, scores);
-      var pad = Math.max(3, Math.round(maxS * 0.05));
-      var yMin = 55;
+      var pad = Math.max(2, Math.round((maxS - minS) * 0.15));
+      var yMin = Math.min(0, minS - pad);
       var yMax = maxS + pad;
 
       // Helpers — inverted Y: low scores at top, high scores at bottom
@@ -320,8 +339,9 @@
         ctx.lineTo(ml + cw, gy);
         ctx.stroke();
 
-        // Y-axis labels — 0 at top, max at bottom
-        var label = Math.round(yMin + (g / gridSteps) * (yMax - yMin));
+        // Y-axis labels — score to par format
+        var labelVal = Math.round(yMin + (g / gridSteps) * (yMax - yMin));
+        var label = labelVal === 0 ? 'E' : (labelVal > 0 ? '+' + labelVal : labelVal.toString());
         ctx.fillStyle = 'rgba(255,255,255,0.35)';
         ctx.font = '10px -apple-system, sans-serif';
         ctx.textAlign = 'right';
@@ -352,7 +372,7 @@
       ctx.lineTo(xPos(points.length - 1), mt + ch);
       ctx.lineTo(xPos(0), mt + ch);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0,230,118,0.08)';
+      ctx.fillStyle = 'rgba(201,162,75,0.08)';
       ctx.fill();
 
       // Draw dots
@@ -367,12 +387,15 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Score label above dot
+        // Score-to-par label above dot
+        var dotVal = points[i].score;
+        var dotLabel = dotVal === 0 ? 'E' : (dotVal > 0 ? '+' + dotVal : dotVal.toString());
+        if (points[i].holesPlayed < 18) dotLabel += ' (' + points[i].holesPlayed + 'h)';
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
         ctx.font = 'bold 10px -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(points[i].score, px, py - 8);
+        ctx.fillText(dotLabel, px, py - 8);
       }
 
       // Linear regression trend line

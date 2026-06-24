@@ -119,7 +119,8 @@ const auth = {
         const u = getLocalUsers();
         if (u[username]) { u[username].displayName = profile.displayName; saveLocalUsers(u); }
         setSession({ uid, username: profile.displayName });
-        // Update displayName in Firebase credentials (awaited)
+        // Update displayName in Firebase credentials and nameIndex
+        db.ref('nameIndex/' + profile.displayName).set(uid).catch(function() {});
         return db.ref('credentials/' + username + '/displayName').set(profile.displayName).catch(function() {});
       }
       return Promise.resolve();
@@ -152,7 +153,8 @@ const auth = {
       self.currentUser = user;
       setSession({ uid: stored.uid, username: user.displayName });
       self._notifyListeners();
-      // Sync to Firebase if not already there
+      // Sync to Firebase if not already there + update nameIndex
+      db.ref('nameIndex/' + user.displayName).set(user.uid).catch(function() {});
       db.ref('credentials/' + username).once('value').then(function(snap) {
         if (!snap.exists()) {
           db.ref('credentials/' + username).set(stored).catch(function() {});
@@ -179,6 +181,7 @@ const auth = {
       self.currentUser = user;
       setSession({ uid: fbCred.uid, username: user.displayName });
       self._notifyListeners();
+      db.ref('nameIndex/' + user.displayName).set(user.uid).catch(function() {});
       return { user: user };
     });
   },
@@ -388,12 +391,66 @@ _firebaseLoadPromise = new Promise(function(resolve) {
 });
 
 // *** FIREBASE CONFIG ***
-var FIREBASE_CONFIG = {
+// Production project — used by the live deployed site.
+var FIREBASE_CONFIG_PROD = {
   apiKey: "AIzaSyCca3qFg0zgHwOWowzLqmMPSoCy-ybDNoI",
   authDomain: "westchester-golf-app.firebaseapp.com",
   databaseURL: "https://westchester-golf-app-default-rtdb.firebaseio.com",
   projectId: "westchester-golf-app"
 };
+// Playground project — used only when serving from localhost so test data
+// never touches the live database. Created 2026-04-25.
+var FIREBASE_CONFIG_TEST = {
+  apiKey: "AIzaSyAEeQqz2t7D5w7lyv8ZFrrOujvoSQxNk_g",
+  authDomain: "westchester-golf-test.firebaseapp.com",
+  databaseURL: "https://westchester-golf-test-default-rtdb.firebaseio.com",
+  projectId: "westchester-golf-test",
+  storageBucket: "westchester-golf-test.firebasestorage.app",
+  messagingSenderId: "708971045235",
+  appId: "1:708971045235:web:439f9dd1ce92c767e76506"
+};
+var IS_PLAYGROUND = (function() {
+  var h = (typeof location !== 'undefined' && location.hostname) || '';
+  return h !== 'westchester-golf-app.web.app' && h !== 'westchester-golf-app.firebaseapp.com';
+})();
+var FIREBASE_CONFIG = IS_PLAYGROUND ? FIREBASE_CONFIG_TEST : FIREBASE_CONFIG_PROD;
+if (IS_PLAYGROUND && typeof console !== 'undefined') {
+  console.log('[Firebase] PLAYGROUND mode — using test database (' + FIREBASE_CONFIG.projectId + ')');
+}
+
+// Visible PLAYGROUND banner — only on localhost. Injected on every page so
+// it's impossible to confuse the test app with the live one.
+if (IS_PLAYGROUND && typeof document !== 'undefined') {
+  (function installPlaygroundBanner() {
+    function inject() {
+      if (document.getElementById('__playground_banner__')) return;
+      var b = document.createElement('div');
+      b.id = '__playground_banner__';
+      b.textContent = 'PLAYGROUND — TEST DATABASE';
+      b.style.cssText = [
+        'position:fixed', 'top:0', 'left:0', 'right:0',
+        'z-index:2147483647',
+        'background:repeating-linear-gradient(45deg,#f5a623,#f5a623 10px,#1a1a1a 10px,#1a1a1a 20px)',
+        'color:#fff',
+        'font:700 11px/1.4 -apple-system,BlinkMacSystemFont,sans-serif',
+        'letter-spacing:2px',
+        'text-align:center',
+        'padding:6px 8px',
+        'text-shadow:0 1px 2px rgba(0,0,0,0.8)',
+        'pointer-events:none',
+        'box-shadow:0 2px 8px rgba(0,0,0,0.4)'
+      ].join(';');
+      document.body.appendChild(b);
+      // Push page content down so the banner doesn't cover the header
+      document.body.style.paddingTop = (parseInt(getComputedStyle(document.body).paddingTop, 10) || 0) + 28 + 'px';
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', inject);
+    } else {
+      inject();
+    }
+  })();
+}
 
 (function loadFirebaseSDK() {
   var s1 = document.createElement('script');
@@ -529,7 +586,8 @@ function isSharedPath(path) {
     path === 'activeRounds' || path.startsWith('activeRounds/') ||
     path === 'users' || path.startsWith('users/') ||
     path === 'credentials' || path.startsWith('credentials/') ||
-    path === 'usernames' || path.startsWith('usernames/')
+    path === 'usernames' || path.startsWith('usernames/') ||
+    path === 'nameIndex' || path.startsWith('nameIndex/')
   );
 }
 
@@ -684,10 +742,16 @@ function requireAuth(callback) {
       // Restore avatar from Firebase if missing locally (e.g. after cache clear)
       restoreAvatarFromFirebase(user.uid);
       callback(user);
+      // If admin, publish current version to Firebase so all users get the popup
+      if (user.displayName && user.displayName.toLowerCase() === 'kohyo') {
+        _firebaseLoadPromise.then(function() {
+          _firebaseDB.ref('config/latestVersion').set(parseInt(APP_VERSION, 10)).catch(function(){});
+        });
+      }
       // Show update popup automatically if a new version was just installed
       setTimeout(function() {
         if (typeof checkUpdatePopup === 'function') checkUpdatePopup();
-      }, 800);
+      }, 1200);
       // Emergency override: Firebase-controlled forced update
       setTimeout(function() {
         if (typeof checkRequiredVersion === 'function') checkRequiredVersion();

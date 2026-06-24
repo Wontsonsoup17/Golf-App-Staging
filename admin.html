@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<style>html,body{background:#0a0f0d}</style>
+<style>html,body{background:#132017}</style>
 <script>
-(function(){var v='166';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='195';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -14,8 +14,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Admin - Westchester Golf</title>
-<link rel="stylesheet" href="shared.css?v=166">
+<title>Admin - Golf Tracker</title>
+<link rel="stylesheet" href="shared.css?v=195">
 <style>
 .admin-page { padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 100px; }
 .admin-header { text-align: center; margin-bottom: 24px; }
@@ -40,7 +40,7 @@
 .admin-tool-name { font-size: 14px; font-weight: 600; color: var(--text); }
 .admin-tool-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .admin-tool-status { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
-.status-on { background: rgba(0,230,118,0.15); color: var(--green-accent); }
+.status-on { background: rgba(201,162,75,0.15); color: var(--green-accent); }
 .status-off { background: var(--red-dim); color: var(--red); }
 
 /* Buttons */
@@ -62,7 +62,7 @@
 /* Toggle switch */
 .toggle-wrap { display: flex; align-items: center; gap: 10px; }
 .toggle { position: relative; width: 44px; height: 24px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 12px; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
-.toggle.on { background: rgba(0,230,118,0.2); border-color: var(--green-accent); }
+.toggle.on { background: rgba(201,162,75,0.2); border-color: var(--green-accent); }
 .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--text-muted); border-radius: 50%; transition: all 0.2s; }
 .toggle.on::after { left: 22px; background: var(--green-accent); }
 
@@ -215,9 +215,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=166"></script>
-<script src="shared.js?v=166"></script>
-<script src="firebase-sync.js?v=166"></script>
+<script src="firebase-config.js?v=195"></script>
+<script src="shared.js?v=195"></script>
+<script src="firebase-sync.js?v=195"></script>
 <script>
 var _allUsers = [];
 var _pendingResetUser = null;

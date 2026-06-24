@@ -1,29 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<style>html,body{background:#0a0f0d}</style>
+<style>html,body{background:#132017}</style>
 <script>
-(function(){var v='166';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='195';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0a0f0d">
+<meta name="theme-color" content="#132017">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Westchester Golf</title>
-<link rel="stylesheet" href="shared.css?v=166">
+<title>Golf Tracker</title>
+<link rel="stylesheet" href="shared.css?v=195">
 </head>
 <body>
 
 <div class="user-header" id="userHeader"></div>
 
 <div class="hero">
-  <div class="hero-logo">&#9971;</div>
-  <h1>Westchester Golf</h1>
+  <img src="images/golf-tracker-logo.png" alt="Golf Tracker" class="hero-logo-img" onerror="this.onerror=null;this.src='images/logo.svg'">
   <p>6 Public Courses &bull; Live Scoring &bull; Stats</p>
 </div>
 
@@ -31,7 +30,12 @@
 <div id="activeRoundBanner"></div>
 
 <div class="main" style="padding-top:0">
+  <div class="action-toggle">
+    <button type="button" class="action-tab active" data-target="joinPanel" onclick="switchAction('join')">Join a Round</button>
+    <button type="button" class="action-tab" data-target="createPanel" onclick="switchAction('create')">Create Round</button>
+  </div>
   <!-- Join Existing Round -->
+  <div id="joinPanel">
   <div class="join-card">
     <h3>&#128279; Join a Round</h3>
     <div class="join-input-row">
@@ -40,21 +44,28 @@
     </div>
     <div class="join-error" id="joinError"></div>
   </div>
+  </div>
 
   <!-- Create New Group Round -->
-  <div class="join-card" style="border-color:rgba(0,230,118,0.15)">
-    <h3 style="color:var(--green-accent);border-bottom-color:rgba(0,230,118,0.1)">&#127760; Create a Group Round</h3>
+  <div id="createPanel" style="display:none">
+  <div class="join-card" style="border-color:rgba(201,162,75,0.15)">
+    <h3 style="color:var(--green-accent);border-bottom-color:rgba(201,162,75,0.1)">&#127760; Create a Group Round</h3>
     <div style="margin-bottom:8px">
       <select id="createCourseSelect" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);color:var(--text);font-size:14px;-webkit-appearance:none;appearance:none">
       </select>
     </div>
     <div id="gameTypeSection" style="margin-bottom:8px"></div>
     <div style="margin-bottom:8px">
+      <select id="startingHoleSelect" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);color:var(--text);font-size:14px;-webkit-appearance:none;appearance:none">
+      </select>
+    </div>
+    <div style="margin-bottom:8px">
       <input type="text" id="createCodeInput" placeholder="Create a round code" maxlength="15" autocomplete="off" readonly ontouchstart="this.removeAttribute('readonly')" onmousedown="this.removeAttribute('readonly')" style="width:100%;font-family:monospace;font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;text-align:center;padding:10px">
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">4-15 characters. Share this code so friends can join.</div>
     <button class="btn-primary" id="createBtn" onclick="handleCreateRound()">Create Round</button>
     <div class="join-error" id="createError"></div>
+  </div>
   </div>
 
   <div class="section-title">Westchester County</div>
@@ -65,9 +76,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=166"></script>
-<script src="shared.js?v=166"></script>
-<script src="firebase-sync.js?v=166"></script>
+<script src="firebase-config.js?v=195"></script>
+<script src="shared.js?v=195"></script>
+<script src="firebase-sync.js?v=195"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('courses');
@@ -83,6 +94,13 @@
     courseSelect.innerHTML = '<option value="" disabled selected style="color:#666">— Choose a Course —</option>' +
       COURSES.map(function(c) {
         return '<option value="' + c.id + '">' + c.name + ' (Par ' + c.par + ')</option>';
+      }).join('');
+
+    // Populate starting hole dropdown
+    var startingHoleSelect = document.getElementById('startingHoleSelect');
+    startingHoleSelect.innerHTML = '<option value="0">Starting Hole: 1 (Default)</option>' +
+      Array.from({length: 17}, function(_, i) {
+        return '<option value="' + (i+1) + '">Starting Hole: ' + (i+2) + '</option>';
       }).join('');
 
     // Render game type section — admin only for now
@@ -203,15 +221,20 @@
       var errorEl = document.getElementById('createError');
       errorEl.style.display = 'none';
 
-      if (code.length < 3 || code.length > 15) {
-        errorEl.textContent = 'Code must be 3-15 characters.';
+      var courseId = document.getElementById('createCourseSelect').value;
+      var course = getCourse(courseId);
+
+      if (!course) {
+        errorEl.textContent = 'Please select a course before creating a round.';
         errorEl.style.display = 'block';
         return;
       }
 
-      var courseId = document.getElementById('createCourseSelect').value;
-      var course = getCourse(courseId);
-      if (!course) return;
+      if (code.length < 3 || code.length > 15) {
+        errorEl.textContent = 'Please enter a round code (3-15 characters). Tap the field and type one, or tap the generate button.';
+        errorEl.style.display = 'block';
+        return;
+      }
 
       var btn = document.getElementById('createBtn');
       btn.disabled = true;
@@ -234,6 +257,7 @@
         var teeKey = Object.keys(course.tees)[0];
         var teeLabel = course.tees[teeKey].label;
         var date = new Date().toISOString().split('T')[0];
+        var startingHole = parseInt(document.getElementById('startingHoleSelect').value) || 0;
 
         var createTimeout = setTimeout(function() {
           btn.disabled = false;
@@ -242,7 +266,10 @@
           errorEl.style.display = 'block';
         }, 15000);
 
-        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code)
+        var gameTypeEl = document.getElementById('gameTypeSelect');
+        var gameType = gameTypeEl ? gameTypeEl.value : 'standard';
+
+        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code, startingHole, gameType)
           .then(function(createdCode) {
             clearTimeout(createTimeout);
             localStorage.setItem('active-group-code', createdCode);
@@ -262,8 +289,11 @@
         var teeKey = Object.keys(course.tees)[0];
         var teeLabel = course.tees[teeKey].label;
         var date = new Date().toISOString().split('T')[0];
+        var startingHole = parseInt(document.getElementById('startingHoleSelect').value) || 0;
+        var gameTypeEl2 = document.getElementById('gameTypeSelect');
+        var gameType2 = gameTypeEl2 ? gameTypeEl2.value : 'standard';
 
-        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code)
+        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code, startingHole, gameType2)
           .then(function(createdCode) {
             localStorage.setItem('active-group-code', createdCode);
             window.location.href = 'scorecard.html?group=' + createdCode;
@@ -277,6 +307,14 @@
       });
     };
   });
+</script>
+<script>
+function switchAction(which){
+  var jp=document.getElementById("joinPanel"), cp=document.getElementById("createPanel");
+  if(jp) jp.style.display = which==="create" ? "none" : "";
+  if(cp) cp.style.display = which==="create" ? "" : "none";
+  document.querySelectorAll(".action-tab").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-target")===(which+"Panel")); });
+}
 </script>
 </body>
 </html>

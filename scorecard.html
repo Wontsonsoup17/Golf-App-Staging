@@ -1,21 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<style>html,body{background:#0a0f0d}</style>
+<style>html,body{background:#132017}</style>
 <script>
-(function(){var v='166';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='195';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0a0f0d">
+<meta name="theme-color" content="#132017">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Live Round - Westchester Golf</title>
-<link rel="stylesheet" href="shared.css?v=166">
+<title>Live Round - Golf Tracker</title>
+<link rel="stylesheet" href="shared.css?v=195">
+<style>
+/* ===== SCRAMBLE MODE ===== */
+.scramble-lobby { padding: 0; }
+.lobby-team-box { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.lobby-player-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.lobby-assign-btn { padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; border: 1px solid; cursor: pointer; background: none; }
+.scramble-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+.scramble-hole-header { background: linear-gradient(135deg, rgba(201,162,75,0.12), rgba(201,162,75,0.04)); padding: 12px 16px; text-align: center; border-bottom: 1px solid var(--border); }
+.scramble-hole-num { font-size: 22px; font-weight: 900; color: var(--text); }
+.scramble-hole-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.team-score-section { padding: 16px; }
+.team-score-section.mine { border-bottom: 1px solid var(--border); }
+.team-score-section.opp { background: rgba(255,255,255,0.02); }
+.team-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.team-badge.mine { color: var(--green-accent); }
+.team-badge.opp { color: var(--text-muted); }
+.scramble-stepper { display: flex; align-items: center; justify-content: center; gap: 20px; }
+.scramble-step-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--border-light); background: rgba(255,255,255,0.05); font-size: 24px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text); -webkit-tap-highlight-color: transparent; }
+.scramble-step-btn:active { background: rgba(255,255,255,0.12); }
+.scramble-score-display { font-size: 52px; font-weight: 900; min-width: 60px; text-align: center; line-height: 1; }
+.scramble-score-label { text-align: center; font-size: 13px; font-weight: 700; margin-top: 6px; }
+.opp-score-row { display: flex; align-items: center; justify-content: space-between; }
+.opp-score-num { font-size: 28px; font-weight: 900; }
+.opp-score-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.confirm-section { padding: 14px 16px; border-top: 1px solid var(--border); }
+.confirm-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.confirm-chip { flex: 1; padding: 10px 8px; border-radius: 10px; text-align: center; font-size: 12px; font-weight: 700; border: 1px solid; }
+.confirm-chip.done { background: rgba(201,162,75,0.12); border-color: rgba(201,162,75,0.3); color: var(--green-accent); }
+.confirm-chip.waiting { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text-muted); }
+.scramble-confirm-btn { width: 100%; padding: 14px; background: var(--green-accent); color: #132017; font-size: 15px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.scramble-confirm-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+.scramble-confirm-btn.already { background: rgba(201,162,75,0.15); color: var(--green-accent); border: 1px solid rgba(201,162,75,0.3); }
+.scramble-lb { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 80px; }
+.scramble-lb-header { padding: 10px 16px; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+.scramble-lb-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.scramble-lb-row:last-child { border-bottom: none; }
+.team-name-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.team-name-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 24px; max-width: 360px; width: 100%; text-align: center; }
+</style>
 </head>
 <body>
 
@@ -39,11 +78,11 @@
 </div>
 
 <nav class="bottom-nav" id="bottomNav"></nav>
-<div style="text-align:center;font-size:9px;color:#333;padding:4px;opacity:0.5">v106</div>
+<div style="text-align:center;font-size:9px;color:#333;padding:4px;opacity:0.5">v110</div>
 
-<script src="firebase-config.js?v=166"></script>
-<script src="shared.js?v=166"></script>
-<script src="firebase-sync.js?v=166"></script>
+<script src="firebase-config.js?v=195"></script>
+<script src="shared.js?v=195"></script>
+<script src="firebase-sync.js?v=195"></script>
 <script>
   // ==================== SCORE EFFECTS (emoji burst) ====================
   // Defined at script scope so both solo and group modes can access them
@@ -126,6 +165,166 @@
     return container;
   }
 
+  // ===================================================================
+  // HOLE PICKER MODAL — tap the hole number to jump to any hole
+  // Each render mode sets window._hpState so this function stays generic
+  // ===================================================================
+  window._hpState = null; // { course, currentHole, scored[] }
+
+  window.showHolePicker = function() {
+    if (!window._hpState) return;
+    if (document.getElementById('holePickerModal')) return;
+
+    var state = window._hpState;
+    var course = state.course;
+    var cur = state.currentHole;
+    var scored = state.scored; // boolean[18]
+
+    var grid = '';
+    for (var i = 0; i < 18; i++) {
+      var hole = course.holes[i];
+      var isCur = i === cur;
+      var isScored = scored[i];
+      var bg, border, color;
+      if (isCur) {
+        bg = 'rgba(212,175,55,0.25)'; border = '2px solid #d4af37'; color = '#d4af37';
+      } else if (isScored) {
+        bg = 'rgba(201,162,75,0.12)'; border = '1px solid rgba(201,162,75,0.3)'; color = '#00e676';
+      } else {
+        bg = 'rgba(255,255,255,0.05)'; border = '1px solid rgba(255,255,255,0.1)'; color = '#bbb';
+      }
+      grid +=
+        '<button onclick="goToHole(' + i + ');document.getElementById(\'holePickerModal\').remove()" ' +
+        'style="width:calc(16.666% - 5px);aspect-ratio:1;display:flex;flex-direction:column;align-items:center;' +
+        'justify-content:center;border-radius:8px;cursor:pointer;background:' + bg + ';border:' + border + ';color:' + color + ';padding:0">' +
+          '<span style="font-size:15px;font-weight:700;line-height:1">' + (i + 1) + '</span>' +
+          '<span style="font-size:9px;font-weight:400;opacity:0.7;margin-top:2px">Par ' + hole.par + '</span>' +
+        '</button>';
+    }
+
+    var overlay = document.createElement('div');
+    overlay.id = 'holePickerModal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML =
+      '<div style="background:#121f14;border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:460px;padding-bottom:calc(16px + env(safe-area-inset-bottom))">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+          '<span style="font-size:14px;font-weight:700;color:#fff">Jump to Hole</span>' +
+          '<button onclick="document.getElementById(\'holePickerModal\').remove()" style="background:none;border:none;color:#666;font-size:22px;line-height:1;cursor:pointer;padding:0">&times;</button>' +
+        '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">' + grid + '</div>' +
+        '<div style="margin-top:10px;font-size:11px;color:#555;text-align:center">' +
+          '<span style="color:#d4af37">&#9632;</span> Current &nbsp;' +
+          '<span style="color:#00e676">&#9632;</span> Scored &nbsp;' +
+          '<span style="color:#555">&#9632;</span> Not yet played' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  // ===================================================================
+  // TEMPORARY HOLE MODAL — admin-only, group sessions, current hole only
+  // Lets the host swap the CURRENT hole's par/yards for a temp hole.
+  // Persists to Firebase under meta.holeOverrides; all clients see it live.
+  // The override auto-clears when the admin moves to a different hole.
+  // ===================================================================
+  window.showTempHoleModal = function() {
+    if (!window._hpState) return;
+    if (document.getElementById('tempHoleModal')) return;
+    var state = window._hpState;
+    if (!state.groupCode || !state.isAdmin) return;
+
+    var baseCourse = state.baseCourse || state.course;
+    var overrides = state.overrides || {};
+    var idx = state.currentHole || 0;
+    var origHole = baseCourse.holes[idx];
+    var existing = overrides[idx] || null;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'tempHoleModal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML =
+      '<div style="background:#121f14;border:1px solid rgba(245,166,35,0.3);border-radius:14px;padding:20px;width:100%;max-width:380px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+          '<span style="font-size:15px;font-weight:800;color:#f5a623">Temporary Hole</span>' +
+          '<button onclick="document.getElementById(\'tempHoleModal\').remove()" style="background:none;border:none;color:#666;font-size:22px;line-height:1;cursor:pointer;padding:0">&times;</button>' +
+        '</div>' +
+        '<p style="font-size:12px;color:#7a9e86;margin-bottom:14px;line-height:1.4">Override par/yards for the hole you&rsquo;re currently on. All players see the change immediately on this hole. The override stays until you remove it &mdash; navigate back to this hole anytime to edit or remove.</p>' +
+
+        '<div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-radius:8px;padding:10px 12px;margin-bottom:14px">' +
+          '<div style="font-size:10px;font-weight:700;color:#bbb;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Current hole</div>' +
+          '<div style="font-size:14px;font-weight:700;color:#e8f5e9">Hole ' + (idx + 1) + ' &mdash; original Par ' + origHole.par + '</div>' +
+          (existing ? '<div style="font-size:11px;color:#f5a623;margin-top:4px">Currently overridden: Par ' + existing.par + ', ' + existing.yards + 'y</div>' : '') +
+        '</div>' +
+
+        '<label style="display:block;font-size:11px;font-weight:700;color:#bbb;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Par</label>' +
+        '<div id="tempParBtns" style="display:flex;gap:8px;margin-bottom:14px">' +
+          '<button data-par="3" onclick="setTempPar(3)" style="flex:1;padding:11px;background:rgba(255,255,255,0.05);border:1px solid #2a3a2e;border-radius:8px;color:#e8f5e9;font-size:14px;font-weight:700;cursor:pointer">Par 3</button>' +
+          '<button data-par="4" onclick="setTempPar(4)" style="flex:1;padding:11px;background:rgba(255,255,255,0.05);border:1px solid #2a3a2e;border-radius:8px;color:#e8f5e9;font-size:14px;font-weight:700;cursor:pointer">Par 4</button>' +
+          '<button data-par="5" onclick="setTempPar(5)" style="flex:1;padding:11px;background:rgba(255,255,255,0.05);border:1px solid #2a3a2e;border-radius:8px;color:#e8f5e9;font-size:14px;font-weight:700;cursor:pointer">Par 5</button>' +
+        '</div>' +
+
+        '<label style="display:block;font-size:11px;font-weight:700;color:#bbb;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Total Yards</label>' +
+        '<input id="tempYards" type="number" inputmode="numeric" min="50" max="700" placeholder="e.g. 140" ' +
+          'style="width:100%;padding:11px;background:#132017;border:1px solid #2a3a2e;border-radius:8px;color:#e8f5e9;font-size:14px;margin-bottom:18px">' +
+
+        '<button id="tempHoleSaveBtn" onclick="saveTempHole()" style="width:100%;padding:13px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px">' + (existing ? 'Update Temporary Hole' : 'Apply Temporary Hole') + '</button>' +
+        (existing ? '<button id="tempHoleRemoveBtn" onclick="removeTempHole()" style="width:100%;padding:11px;background:none;color:#ff5252;border:1px solid rgba(255,82,82,0.4);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Remove Temp Hole</button>' : '') +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    if (existing) {
+      window.setTempPar(existing.par);
+      document.getElementById('tempYards').value = existing.yards;
+    } else {
+      window.setTempPar(origHole.par);
+      document.getElementById('tempYards').value = '';
+    }
+  };
+
+  window._tempPar = null;
+  window.setTempPar = function(p) {
+    window._tempPar = p;
+    var btns = document.querySelectorAll('#tempParBtns button');
+    btns.forEach(function(b) {
+      var active = parseInt(b.getAttribute('data-par'), 10) === p;
+      b.style.background = active ? 'rgba(245,166,35,0.18)' : 'rgba(255,255,255,0.05)';
+      b.style.borderColor = active ? 'rgba(245,166,35,0.6)' : '#2a3a2e';
+      b.style.color = active ? '#f5a623' : '#e8f5e9';
+    });
+  };
+
+  window.saveTempHole = function() {
+    var state = window._hpState;
+    if (!state || !state.groupCode || !state.isAdmin) return;
+    var idx = state.currentHole || 0;
+    var par = window._tempPar;
+    var yards = parseInt(document.getElementById('tempYards').value, 10);
+    if ([3, 4, 5].indexOf(par) === -1) { alert('Pick a par (3, 4, or 5).'); return; }
+    if (!yards || yards < 50 || yards > 700) { alert('Enter total yards (50–700).'); return; }
+    var hcp = computeAutoHcp(state.baseCourse || state.course, par, idx);
+    setHoleOverride(state.groupCode, idx, { par: par, yards: yards, hcp: hcp }).then(function() {
+      var modal = document.getElementById('tempHoleModal');
+      if (modal) modal.remove();
+    }).catch(function(e) {
+      alert('Failed to save: ' + (e && e.message ? e.message : 'unknown error'));
+    });
+  };
+
+  window.removeTempHole = function() {
+    var state = window._hpState;
+    if (!state || !state.groupCode || !state.isAdmin) return;
+    var idx = state.currentHole || 0;
+    if (!confirm('Remove the temporary hole and restore Hole ' + (idx + 1) + ' to its original par/yards?')) return;
+    clearHoleOverride(state.groupCode, idx).then(function() {
+      var modal = document.getElementById('tempHoleModal');
+      if (modal) modal.remove();
+    }).catch(function(e) {
+      alert('Failed to remove: ' + (e && e.message ? e.message : 'unknown error'));
+    });
+  };
+
   requireAuth(function(user) {
     renderBottomNav('courses');
     renderBroadcastBanner();
@@ -173,7 +372,7 @@
         '.mulligan-item{margin-bottom:16px}.mulligan-item:last-child{margin-bottom:0}' +
         '.mulligan-label{font-size:12px;font-weight:700;color:#d4af37;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}' +
         '.mulligan-options{display:flex;gap:6px}' +
-        '.mulligan-option{flex:1;padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#0a0f0d;color:#999;font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.15s ease}' +
+        '.mulligan-option{flex:1;padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#132017;color:#999;font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.15s ease}' +
         '.mulligan-option.selected{border-color:#d4af37;background:rgba(212,175,55,0.15);color:#d4af37}' +
         '@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}';
       document.head.appendChild(style);
@@ -258,7 +457,7 @@
         '.drop-item{margin-bottom:16px}.drop-item:last-child{margin-bottom:0}' +
         '.drop-label{font-size:12px;font-weight:700;color:#e53935;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}' +
         '.drop-options{display:flex;gap:6px}' +
-        '.drop-option{flex:1;padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#0a0f0d;color:#999;font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.15s ease}' +
+        '.drop-option{flex:1;padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#132017;color:#999;font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.15s ease}' +
         '.drop-option.selected{border-color:#e53935;background:rgba(229,57,53,0.15);color:#e53935}';
       document.head.appendChild(style);
     }
@@ -396,7 +595,15 @@
       const teeKey = R.tee;
       const yardage = hole[teeKey] || '—';
       const playableHole = getPlayableHole();
-      const isFutureHole = currentHole > playableHole;
+
+      // Update hole picker state
+      window._hpState = {
+        course: course,
+        currentHole: currentHole,
+        scored: Array.from({length: 18}, function(_, i) {
+          return R.players.some(function(p) { return R.scores[p][i] > 0; });
+        })
+      };
 
       let html = '';
 
@@ -412,11 +619,12 @@
         html += `<div class="hole-pip ${cls}" onclick="goToHole(${i})">${i+1}</div>`;
       }
       html += '</div>';
+      html += '<button onclick="showHolePicker()" style="width:100%;padding:8px;margin:6px 0 2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#bbb;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.3px">&#8597; Jump to Hole</button>';
 
       // Hole display
       html += `
         <div class="hole-display">
-          <div class="hole-number">${isFutureHole ? 'Preview — ' : ''}Hole ${hole.num}</div>
+          <div class="hole-number">Hole ${hole.num}</div>
           <div class="hole-info-chips">
             <span class="info-chip par-chip">Par ${hole.par}</span>
             <span class="info-chip">${yardage} yds</span>
@@ -424,18 +632,6 @@
           </div>
         </div>
       `;
-
-      // Future hole preview banner
-      if (isFutureHole) {
-        html += `<div class="preview-banner">
-          <span class="preview-banner-icon">&#128065;</span>
-          <div>
-            <div class="preview-banner-title">Hole Preview</div>
-            <div class="preview-banner-sub">You're previewing a future hole. Score input is available when you reach this hole.</div>
-          </div>
-          <button class="preview-back-btn" onclick="goToHole(${playableHole})">Go to Hole ${playableHole + 1} &#8594;</button>
-        </div>`;
-      }
 
       // Hole layout image
       if (hole.img) {
@@ -465,9 +661,8 @@
         </div>`;
       }
 
-      // Player cards — only show if NOT a future hole
-      if (!isFutureHole) {
-        R.players.forEach((p, pIdx) => {
+      // Player cards
+      R.players.forEach((p, pIdx) => {
           const score = R.scores[p][currentHole];
           const scoreClass = getScoreClass(score, hole.par);
           const label = getScoreLabel(score, hole.par);
@@ -539,16 +734,13 @@
             html += '</div>';
           }
         });
-      }
 
-      if (!isFutureHole) {
-        html += `
-          <div class="finish-section">
-            <button class="btn-gold" onclick="finishRound()">Save & Finish</button>
-            <button class="btn-secondary" onclick="cancelRound()">Cancel</button>
-          </div>
-        `;
-      }
+      html += `
+        <div class="finish-section">
+          <button class="btn-gold" onclick="finishRound()">Save & Finish</button>
+          <button class="btn-secondary" onclick="cancelRound()">Cancel</button>
+        </div>
+      `;
 
       document.getElementById('mainContent').innerHTML = html;
 
@@ -799,7 +991,7 @@
           '<div class="empty-state">' +
             '<div class="icon">&#9989;</div>' +
             '<p>You already finished this round.<br>Your scores have been saved.</p>' +
-            '<a href="history.html" style="display:inline-block;margin-top:14px;padding:12px 24px;background:var(--green-accent);color:#0a0f0d;border-radius:10px;font-weight:700;text-decoration:none">View History</a>' +
+            '<a href="history.html" style="display:inline-block;margin-top:14px;padding:12px 24px;background:var(--green-accent);color:#132017;border-radius:10px;font-weight:700;text-decoration:none">View History</a>' +
           '</div>';
         return;
       }
@@ -813,6 +1005,7 @@
 
     function startGroupListener() {
     var roundEndedHandled = false;
+    var prevOverridesJson = null;
     // Listen for real-time updates
     unsubscribe = listenToGroupRound(groupCode, function(data) {
       // Round deleted from Firebase (all players finished and cleanup ran)
@@ -822,13 +1015,19 @@
       }
       if (!data.meta) return;
 
+      // SCRAMBLE MODE — completely separate code path
+      if (data.meta.gameType === 'scramble') {
+        handleScrambleData(data);
+        return;
+      }
+
       // Detect round ended (by host OR by super admin from dashboard)
       if (data.meta.status === 'ended' && !roundEndedHandled) {
         roundEndedHandled = true;
         // Save the round data with FINAL scores for all players
         (function() {
           var tempR = groupDataToRound(data, groupCode);
-          var endedCourse = getCourse(tempR.courseId);
+          var endedCourse = applyHoleOverrides(getCourse(tempR.courseId), tempR._holeOverrides);
           if (endedCourse) {
             var myName = tempR._uidToName[user.uid];
             var myHolesPlayed = myName ? tempR.scores[myName].filter(function(s) { return s > 0; }).length : 0;
@@ -900,7 +1099,8 @@
       }
 
       R = groupDataToRound(data, groupCode);
-      const course = getCourse(R.courseId);
+      const baseCourse = getCourse(R.courseId);
+      const course = applyHoleOverrides(baseCourse, R._holeOverrides);
       course_ref.current = course;
 
       if (!course) {
@@ -918,12 +1118,20 @@
       document.getElementById('courseName').textContent = course.name;
       document.getElementById('courseSub').textContent = `${R.teeLabel} Tees  |  Par ${course.par}  |  ${formatDate(R.date)}`;
 
+      var newOverridesJson = JSON.stringify(R._holeOverrides || {});
+      var overridesChanged = prevOverridesJson !== null && newOverridesJson !== prevOverridesJson;
+      prevOverridesJson = newOverridesJson;
+
       if (!initialRenderDone) {
-        // First load — fetch avatars then full render
+        // First load — set starting hole then fetch avatars then full render
         initialRenderDone = true;
+        currentHole = R._startingHole || 0;
         fetchPlayerAvatars(R._playerUids, function() {
           renderGroup();
         });
+      } else if (overridesChanged) {
+        // Admin added/removed/updated a temp hole — full re-render so par/yards/HCP update
+        renderGroup();
       } else {
         // Subsequent updates from other users — only update the players leaderboard
         updatePlayersLeaderboard();
@@ -931,16 +1139,455 @@
     });
     } // end startGroupListener
 
-    // Determine the current playable hole for the current user
+    // ==================== SCRAMBLE MODE ====================
+    var scrambleTeamKey = null; // 'teamA' or 'teamB'
+    var scrambleNameModalShown = false;
+
+    function handleScrambleData(data) {
+      var status = data.meta.status;
+      var course = applyHoleOverrides(getCourse(data.meta.courseId), data.meta && data.meta.holeOverrides);
+      course_ref.current = course;
+
+      if (course) {
+        if (course.group === 'other') {
+          document.body.classList.add('sunset-theme');
+          document.querySelector('meta[name="theme-color"]').content = '#0f0a07';
+        }
+        document.getElementById('courseName').textContent = course.name;
+        document.getElementById('courseSub').textContent = (data.meta.teeLabel || '') + ' Tees | Par ' + course.par + ' | ' + formatDate(data.meta.date);
+      }
+
+      if (status === 'lobby') {
+        renderScrambleLobby(data);
+        return;
+      }
+
+      if (status === 'ended' && !roundEndedHandled) {
+        roundEndedHandled = true;
+        saveScrambleRound(data);
+        if (unsubscribe) unsubscribe();
+        if (unsubConn) unsubConn();
+        localStorage.removeItem('active-group-code');
+        var endedModal = document.createElement('div');
+        endedModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+        endedModal.innerHTML = '<div style="background:var(--bg-card);border:1px solid rgba(255,82,82,0.3);border-radius:16px;padding:32px 24px;max-width:400px;width:100%;text-align:center"><div style="font-size:48px;margin-bottom:12px">🏁</div><h3 style="color:var(--red,#ff5252);font-size:20px;margin-bottom:8px">Round Ended</h3><p style="color:var(--text-muted);font-size:14px;margin-bottom:24px">The admin ended the scramble. Scores saved.</p><button onclick="window.location.href=\'history.html\'" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer">View History</button></div>';
+        document.body.appendChild(endedModal);
+        return;
+      }
+
+      if (status === 'active' || status === 'finished') {
+        // Find my team
+        var teams = (data.meta.teams) || { teamA: { members: [] }, teamB: { members: [] } };
+        var teamAMembers = teams.teamA.members || [];
+        var teamBMembers = teams.teamB.members || [];
+        if (teamAMembers.indexOf(user.uid) >= 0) scrambleTeamKey = 'teamA';
+        else if (teamBMembers.indexOf(user.uid) >= 0) scrambleTeamKey = 'teamB';
+
+        var myTeam = scrambleTeamKey ? teams[scrambleTeamKey] : null;
+        if (myTeam && !myTeam.name && !scrambleNameModalShown) {
+          scrambleNameModalShown = true;
+          renderScrambleNameModal(scrambleTeamKey);
+        } else if (myTeam && myTeam.name) {
+          var existingModal = document.getElementById('teamNameModal');
+          if (existingModal) existingModal.parentNode.removeChild(existingModal);
+        }
+
+        renderScrambleGame(data);
+        return;
+      }
+    }
+
+    function renderScrambleLobby(data) {
+      var players = data.players || {};
+      var teams = data.meta.teams || { teamA: { name: '', members: [] }, teamB: { name: '', members: [] } };
+      var isCreator = data.meta.createdBy === user.uid;
+      var teamAuids = teams.teamA.members || [];
+      var teamBuids = teams.teamB.members || [];
+      var assignedUids = teamAuids.concat(teamBuids);
+      var unassigned = Object.keys(players).filter(function(u) { return assignedUids.indexOf(u) < 0; });
+
+      var html = '<div class="scramble-lobby">';
+      // Header
+      html += '<div style="text-align:center;padding:20px 0 16px">';
+      html += '<div style="font-size:36px;margin-bottom:8px">🏌️</div>';
+      html += '<h2 style="font-size:20px;color:var(--text);margin-bottom:6px">Scramble Setup</h2>';
+      html += '<div style="font-size:12px;color:var(--text-muted)">Code: <span style="font-family:monospace;font-weight:800;color:var(--gold);letter-spacing:3px">' + groupCode + '</span> <button onclick="copyCode()" class="copy-code-btn" style="background:none;border:none;color:var(--text-muted);font-size:11px;text-decoration:underline;cursor:pointer">Copy</button></div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + Object.keys(players).length + '/4 players joined</div>';
+      html += '</div>';
+
+      // Teams grid
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">';
+      ['teamA', 'teamB'].forEach(function(tk) {
+        var memberUids = teams[tk].members || [];
+        var color = tk === 'teamA' ? '#64b5f6' : '#ef9a9a';
+        var borderColor = tk === 'teamA' ? 'rgba(100,181,246,0.3)' : 'rgba(239,154,154,0.3)';
+        var bg = tk === 'teamA' ? 'rgba(100,181,246,0.08)' : 'rgba(239,154,154,0.08)';
+        html += '<div style="background:' + bg + ';border:1px solid ' + borderColor + ';border-radius:12px;padding:12px">';
+        html += '<div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:' + color + ';margin-bottom:10px">' + (tk === 'teamA' ? '🔵 Team A' : '🔴 Team B') + ' (' + memberUids.length + '/2)</div>';
+        memberUids.forEach(function(uid) {
+          if (!players[uid]) return;
+          html += '<div class="lobby-player-row">';
+          html += '<span style="font-size:13px;font-weight:600;color:var(--text)">' + players[uid].name + '</span>';
+          if (isCreator) {
+            html += '<button onclick="removeFromTeam(\'' + uid + '\',\'' + tk + '\')" style="background:none;border:none;color:#ff5252;font-size:18px;cursor:pointer;line-height:1;padding:0 2px">×</button>';
+          }
+          html += '</div>';
+        });
+        if (memberUids.length < 2) {
+          html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0">' + (2 - memberUids.length) + ' slot' + (2 - memberUids.length > 1 ? 's' : '') + ' open</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+
+      // Unassigned
+      if (unassigned.length > 0) {
+        html += '<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px">';
+        html += '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Waiting to Assign</div>';
+        unassigned.forEach(function(uid) {
+          if (!players[uid]) return;
+          html += '<div class="lobby-player-row" style="margin-bottom:10px">';
+          html += '<span style="font-size:14px;font-weight:600;color:var(--text)">' + players[uid].name + '</span>';
+          if (isCreator) {
+            html += '<div style="display:flex;gap:6px">';
+            html += '<button onclick="assignToTeam(\'' + uid + '\',\'teamA\')" style="padding:6px 10px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.4);border-radius:8px;color:#64b5f6;font-size:11px;font-weight:700;cursor:pointer">Team A</button>';
+            html += '<button onclick="assignToTeam(\'' + uid + '\',\'teamB\')" style="padding:6px 10px;background:rgba(239,154,154,0.15);border:1px solid rgba(239,154,154,0.4);border-radius:8px;color:#ef9a9a;font-size:11px;font-weight:700;cursor:pointer">Team B</button>';
+            html += '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      if (isCreator) {
+        var canStart = teamAuids.length === 2 && teamBuids.length === 2;
+        html += '<button onclick="startScramble()" ' + (canStart ? '' : 'disabled') + ' style="width:100%;padding:16px;background:' + (canStart ? 'var(--green-accent)' : 'rgba(255,255,255,0.06)') + ';color:' + (canStart ? '#132017' : '#555') + ';font-size:16px;font-weight:800;border:none;border-radius:12px;cursor:' + (canStart ? 'pointer' : 'not-allowed') + ';margin-bottom:12px">';
+        html += canStart ? '🚀 Start Round' : 'Assign all 4 players to start';
+        html += '</button>';
+        html += '<button onclick="leaveGroupRound()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text-muted);font-size:13px;cursor:pointer">Cancel Round</button>';
+      } else {
+        html += '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:14px">Waiting for admin to set up teams...</div>';
+        html += '<div style="display:flex;justify-content:center;margin-bottom:12px"><span class="spinner" style="width:28px;height:28px;border-width:3px"></span></div>';
+        html += '<button onclick="leaveGroupRound()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text-muted);font-size:13px;cursor:pointer">Leave Round</button>';
+      }
+
+      html += '</div>';
+      document.getElementById('mainContent').innerHTML = html;
+    }
+
+    function renderScrambleGame(data) {
+      var course = course_ref.current;
+      if (!course) return;
+      var teams = data.meta.teams || { teamA: { name: '', members: [] }, teamB: { name: '', members: [] } };
+      var myTeamKey = scrambleTeamKey;
+      var oppTeamKey = myTeamKey === 'teamA' ? 'teamB' : 'teamA';
+      var myTeam = teams[myTeamKey] || { name: '', members: [] };
+      var oppTeam = teams[oppTeamKey] || { name: '', members: [] };
+      var teamScores = data.teamScores || { teamA: {}, teamB: {} };
+      var teamHole = data.teamHole || { teamA: 0, teamB: 0 };
+      var teamHoleConfirmed = data.teamHoleConfirmed || { teamA: {}, teamB: {} };
+      var myHoleIdx = teamHole[myTeamKey] || 0;
+      var myConfirmed = teamHoleConfirmed[myTeamKey] || {};
+      var myTeamMembers = myTeam.members || [];
+      currentHole = myHoleIdx;
+
+      var hole = course.holes[myHoleIdx];
+      var myScore = (teamScores[myTeamKey] && teamScores[myTeamKey][myHoleIdx]) ? teamScores[myTeamKey][myHoleIdx] : 0;
+      var oppHoleIdx = teamHole[oppTeamKey] || 0;
+      var oppScore = (teamScores[oppTeamKey] && teamScores[oppTeamKey][oppHoleIdx > 0 ? oppHoleIdx - 1 : 0]) || 0;
+      // Actually show opp team current hole score
+      var oppCurrentScore = (teamScores[oppTeamKey] && teamScores[oppTeamKey][oppHoleIdx]) ? teamScores[oppTeamKey][oppHoleIdx] : 0;
+
+      var myScoreClass = myScore > 0 ? getScoreClass(myScore, hole.par) : '';
+      var myScoreLabel = myScore > 0 ? getScoreLabel(myScore, hole.par) : '—';
+      var iConfirmed = myConfirmed[user.uid] === true;
+      var isLastHole = myHoleIdx >= 17;
+      var isCreator = data.meta.createdBy === user.uid;
+
+      var myTeamName = myTeam.name || (myTeamKey === 'teamA' ? 'Team A' : 'Team B');
+      var oppTeamName = oppTeam.name || (oppTeamKey === 'teamA' ? 'Team A' : 'Team B');
+      var myColor = myTeamKey === 'teamA' ? '#64b5f6' : '#ef9a9a';
+      var oppColor = oppTeamKey === 'teamA' ? '#64b5f6' : '#ef9a9a';
+
+      var html = '';
+
+      // Hole card
+      html += '<div class="scramble-card">';
+      html += '<div class="scramble-hole-header">';
+      html += '<div class="scramble-hole-num">Hole ' + (myHoleIdx + 1) + ' &bull; Par ' + hole.par + '</div>';
+      html += '<div class="scramble-hole-meta">' + (hole.yards || '—') + ' yds</div>';
+      html += '</div>';
+
+      // My team score
+      html += '<div class="team-score-section mine">';
+      html += '<div class="team-badge mine" style="color:' + myColor + '">🏌️ ' + myTeamName + ' &mdash; YOUR TEAM</div>';
+      html += '<div class="scramble-stepper">';
+      html += '<button class="scramble-step-btn" onclick="scrambleAdj(-1)">&#8722;</button>';
+      html += '<div class="scramble-score-display ' + myScoreClass + '">' + (myScore || 0) + '</div>';
+      html += '<button class="scramble-step-btn" onclick="scrambleAdj(1)">+</button>';
+      html += '</div>';
+      html += '<div class="scramble-score-label ' + myScoreClass + '">' + myScoreLabel + '</div>';
+      html += '</div>';
+
+      // Opponent score
+      html += '<div class="team-score-section opp">';
+      html += '<div class="team-badge opp" style="color:' + oppColor + '">' + oppTeamName + '</div>';
+      html += '<div class="opp-score-row">';
+      html += '<div>';
+      var oppHoleScore = (teamScores[oppTeamKey] && teamScores[oppTeamKey][oppHoleIdx]) ? teamScores[oppTeamKey][oppHoleIdx] : 0;
+      var oppPar = course.holes[oppHoleIdx] ? course.holes[oppHoleIdx].par : hole.par;
+      var oppScoreClass = oppHoleScore > 0 ? getScoreClass(oppHoleScore, oppPar) : '';
+      var oppScoreLabel = oppHoleScore > 0 ? getScoreLabel(oppHoleScore, oppPar) : 'No score yet';
+      html += '<div class="opp-score-num ' + oppScoreClass + '">' + (oppHoleScore || '—') + '</div>';
+      html += '<div class="opp-score-label">Hole ' + (oppHoleIdx + 1) + ' &bull; ' + oppScoreLabel + '</div>';
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+
+      // Confirmation row
+      html += '<div class="confirm-section">';
+      html += '<div class="confirm-row">';
+      myTeamMembers.forEach(function(uid) {
+        var pName = (data.players && data.players[uid]) ? data.players[uid].name : uid;
+        var done = myConfirmed[uid] === true;
+        html += '<div class="confirm-chip ' + (done ? 'done' : 'waiting') + '">' + pName + (done ? ' ✓' : ' ...') + '</div>';
+      });
+      html += '</div>';
+
+      if (isLastHole) {
+        if (iConfirmed) {
+          html += '<button class="scramble-confirm-btn already" disabled>Score Confirmed ✓</button>';
+        } else {
+          html += '<button class="scramble-confirm-btn" onclick="scrambleConfirmFinish()">Confirm & Finish Round ✓</button>';
+        }
+      } else {
+        if (iConfirmed) {
+          html += '<button class="scramble-confirm-btn already" onclick="scrambleUndoConfirm()">Confirmed — Tap to Undo</button>';
+        } else {
+          html += '<button class="scramble-confirm-btn" onclick="scrambleConfirmHole()" ' + (myScore <= 0 ? 'disabled' : '') + '>Confirm Score &rarr;</button>';
+        }
+      }
+      html += '</div>';
+      html += '</div>'; // end scramble-card
+
+      // Team leaderboard
+      html += '<div class="scramble-lb">';
+      html += '<div class="scramble-lb-header">🏆 Scramble Leaderboard</div>';
+      [myTeamKey, oppTeamKey].forEach(function(tk) {
+        var tScores = teamScores[tk] || {};
+        var tHole = teamHole[tk] || 0;
+        var teamTotal = 0, teamPar = 0;
+        for (var h = 0; h < tHole; h++) {
+          teamTotal += (tScores[h] || 0);
+          teamPar += (course.holes[h] ? course.holes[h].par : 4);
+        }
+        var toPar = tHole > 0 ? teamTotal - teamPar : null;
+        var toParStr = toPar === null ? '—' : (toPar === 0 ? 'E' : (toPar > 0 ? '+' + toPar : toPar));
+        var toParColor = toPar === null ? 'var(--text-muted)' : toPar < 0 ? 'var(--green-accent)' : toPar > 0 ? 'var(--bogey)' : 'var(--par-color)';
+        var tName = teams[tk] ? (teams[tk].name || (tk === 'teamA' ? 'Team A' : 'Team B')) : tk;
+        var tColor = tk === 'teamA' ? '#64b5f6' : '#ef9a9a';
+        var isMe = tk === myTeamKey;
+        html += '<div class="scramble-lb-row" style="' + (isMe ? 'background:rgba(201,162,75,0.05)' : '') + '">';
+        html += '<div style="font-size:14px;font-weight:700;color:' + tColor + '">' + tName + (isMe ? ' (You)' : '') + '</div>';
+        html += '<div style="text-align:right">';
+        html += '<div style="font-size:18px;font-weight:900;color:' + toParColor + '">' + toParStr + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted)">Thru ' + tHole + '</div>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      // Admin controls
+      if (isCreator) {
+        html += '<div style="margin-bottom:80px">';
+        html += '<button onclick="scrambleEndForAll()" style="width:100%;padding:12px;background:none;border:1px solid rgba(255,82,82,0.3);border-radius:10px;color:#ff5252;font-size:13px;cursor:pointer">End Round for All</button>';
+        html += '</div>';
+      } else {
+        html += '<div style="margin-bottom:80px"></div>';
+      }
+
+      document.getElementById('mainContent').innerHTML = html;
+    }
+
+    function renderScrambleNameModal(teamKey) {
+      var existing = document.getElementById('teamNameModal');
+      if (existing) return;
+      var modal = document.createElement('div');
+      modal.id = 'teamNameModal';
+      modal.className = 'team-name-modal';
+      modal.innerHTML =
+        '<div class="team-name-box">' +
+          '<div style="font-size:40px;margin-bottom:12px">🏆</div>' +
+          '<h3 style="font-size:18px;color:var(--text);margin-bottom:6px">Name Your Team</h3>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">First player to submit sets the name — choose wisely!</p>' +
+          '<input type="text" id="teamNameInput" placeholder="Team name..." maxlength="20" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border-light);border-radius:10px;color:var(--text);font-size:18px;font-weight:700;text-align:center;margin-bottom:12px" autocomplete="off">' +
+          '<button onclick="submitTeamName(\'' + teamKey + '\')" style="width:100%;padding:14px;background:var(--green-accent);color:#132017;font-size:15px;font-weight:800;border:none;border-radius:10px;cursor:pointer">Set Team Name</button>' +
+        '</div>';
+      document.body.appendChild(modal);
+      setTimeout(function() { var inp = document.getElementById('teamNameInput'); if (inp) inp.focus(); }, 200);
+    }
+
+    window.submitTeamName = function(teamKey) {
+      var inp = document.getElementById('teamNameInput');
+      var name = inp ? inp.value.trim() : '';
+      if (!name) { alert('Please enter a team name.'); return; }
+      setScrambleTeamName(groupCode, teamKey, name).then(function() {
+        var modal = document.getElementById('teamNameModal');
+        if (modal) modal.parentNode.removeChild(modal);
+      }).catch(function() { alert('Could not set name. Try again.'); });
+    };
+
+    window.assignToTeam = function(uid, teamKey) {
+      var base = 'activeRounds/' + groupCode + '/meta/teams/' + teamKey;
+      db.ref(base + '/members').once('value').then(function(snap) {
+        var members = snap.val() || [];
+        if (members.indexOf(uid) >= 0) return;
+        if (members.length >= 2) { alert('Team already has 2 players.'); return; }
+        members.push(uid);
+        return db.ref(base + '/members').set(members);
+      }).catch(function() {});
+    };
+
+    window.removeFromTeam = function(uid, teamKey) {
+      var base = 'activeRounds/' + groupCode + '/meta/teams/' + teamKey;
+      db.ref(base + '/members').once('value').then(function(snap) {
+        var members = (snap.val() || []).filter(function(u) { return u !== uid; });
+        return db.ref(base + '/members').set(members);
+      }).catch(function() {});
+    };
+
+    window.startScramble = function() {
+      startScrambleRound(groupCode).catch(function(e) { alert('Could not start round.'); });
+    };
+
+    window.scrambleAdj = function(delta) {
+      if (!scrambleTeamKey) return;
+      var data = window._lastScrambleData;
+      if (!data) return;
+      var teamScores = data.teamScores || {};
+      var teamHole = data.teamHole || {};
+      var holeIdx = teamHole[scrambleTeamKey] || 0;
+      var cur = (teamScores[scrambleTeamKey] && teamScores[scrambleTeamKey][holeIdx]) || 0;
+      var next = Math.max(0, Math.min(20, cur + delta));
+      if (next === cur) return;
+      // Reset confirmations when score changes
+      resetScrambleConfirmations(groupCode, scrambleTeamKey).catch(function() {});
+      updateScrambleScore(groupCode, scrambleTeamKey, holeIdx, next).catch(function() {});
+    };
+
+    window.scrambleConfirmHole = function() {
+      if (!scrambleTeamKey) return;
+      var data = window._lastScrambleData;
+      if (!data) return;
+      var teams = data.meta.teams || {};
+      var myTeam = teams[scrambleTeamKey] || {};
+      var allMembers = myTeam.members || [];
+      var teamHole = data.teamHole || {};
+      var holeIdx = teamHole[scrambleTeamKey] || 0;
+      var teamScores = data.teamScores || {};
+      var myScore = (teamScores[scrambleTeamKey] && teamScores[scrambleTeamKey][holeIdx]) || 0;
+      var course = course_ref.current;
+      var holePar = course ? course.holes[holeIdx].par : 4;
+
+      // Show score effect
+      showScoreEffect(myScore, holePar, function() {});
+      confirmScrambleHole(groupCode, scrambleTeamKey, user.uid, allMembers).catch(function() {});
+    };
+
+    window.scrambleUndoConfirm = function() {
+      if (!scrambleTeamKey) return;
+      resetScrambleConfirmations(groupCode, scrambleTeamKey).catch(function() {});
+    };
+
+    window.scrambleConfirmFinish = function() {
+      if (!scrambleTeamKey) return;
+      var data = window._lastScrambleData;
+      if (!data) return;
+      if (!confirm('Confirm your team\'s final score and finish the round?')) return;
+      var teams = data.meta.teams || {};
+      var allMembers = (teams[scrambleTeamKey] || {}).members || [];
+      confirmScrambleHole(groupCode, scrambleTeamKey, user.uid, allMembers).then(function() {
+        // Check if both teams are on hole 17 (index) and confirmed
+        saveScrambleRound(data);
+        markPlayerFinished(groupCode, user.uid).catch(function() {});
+        if (unsubscribe) unsubscribe();
+        if (unsubConn) unsubConn();
+        localStorage.removeItem('active-group-code');
+        window.location.href = 'live-game.html?group=' + groupCode;
+      }).catch(function() {});
+    };
+
+    window.scrambleEndForAll = function() {
+      if (!confirm('End the round for all players? All scores will be saved.')) return;
+      var data = window._lastScrambleData;
+      if (data) saveScrambleRound(data);
+      roundEndedHandled = true;
+      endScrambleRound(groupCode).then(function() {
+        if (unsubscribe) unsubscribe();
+        if (unsubConn) unsubConn();
+        localStorage.removeItem('active-group-code');
+        window.location.href = 'history.html';
+      }).catch(function() {});
+    };
+
+    function saveScrambleRound(data) {
+      var course = course_ref.current;
+      if (!course) return;
+      var teams = data.meta.teams || {};
+      var teamScores = data.teamScores || {};
+      var teamHole = data.teamHole || {};
+      var round = {
+        id: Date.now().toString(),
+        courseId: course.id,
+        courseName: course.name,
+        tee: data.meta.tee,
+        teeLabel: data.meta.teeLabel,
+        par: course.par,
+        date: data.meta.date,
+        gameType: 'scramble',
+        groupCode: groupCode,
+        players: Object.keys(data.players || {}).map(function(u) { return data.players[u].name; }),
+        scores: {}, // empty — scramble uses teamScores
+        tracking: {},
+        holePars: course.holes.map(function(h) { return h.par; }),
+        teamScores: JSON.parse(JSON.stringify(teamScores)),
+        teams: JSON.parse(JSON.stringify(teams))
+      };
+      fbSaveRound(user.uid, round).catch(function() {});
+      var rounds = loadRounds();
+      var exists = false;
+      for (var i = rounds.length - 1; i >= 0; i--) {
+        if (rounds[i].groupCode === groupCode && rounds[i].gameType === 'scramble') {
+          round.id = rounds[i].id;
+          rounds[i] = round;
+          exists = true;
+          break;
+        }
+      }
+      if (!exists) rounds.push(round);
+      saveRounds(rounds);
+    }
+
+    // Store latest scramble data for interaction handlers
+    var _origHandleScramble = handleScrambleData;
+    handleScrambleData = function(data) {
+      window._lastScrambleData = data;
+      _origHandleScramble(data);
+    };
+
+    // Determine the current playable hole for the current user (respects starting hole wrap-around)
     function getGroupPlayableHole() {
       const myName = R._uidToName[user.uid];
       if (!myName) return 0;
       const course = course_ref.current;
       if (!course) return 0;
-      for (let i = 0; i < 18; i++) {
+      const start = R._startingHole || 0;
+      for (let j = 0; j < 18; j++) {
+        const i = (start + j) % 18;
         if (!(R.scores[myName][i] > 0)) return i;
       }
-      return 17;
+      // All scored — return last hole in play order
+      return (start + 17) % 18;
     }
 
     // Build the players leaderboard HTML
@@ -979,7 +1626,7 @@
         else if (diff > 0) { toPar = '+' + diff; toParColor = 'var(--bogey)'; }
 
         const borderTop = idx > 0 ? 'border-top:1px solid var(--border);' : '';
-        const meBg = isMe ? 'background:rgba(0,230,118,0.04);' : '';
+        const meBg = isMe ? 'background:rgba(201,162,75,0.04);' : '';
 
         lhtml += '<div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;' + borderTop + meBg + '">';
         lhtml += '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">';
@@ -1031,7 +1678,21 @@
       const myName = R._uidToName[user.uid];
       const isCreator = R._createdBy === user.uid;
       const playableHole = getGroupPlayableHole();
-      const isFutureHole = currentHole > playableHole;
+      const start = R._startingHole || 0;
+      function playOrderPos(idx) { return (idx - start + 18) % 18; }
+
+      // Update hole picker state — group mode includes admin context for temp-hole controls
+      window._hpState = {
+        course: course,
+        baseCourse: getCourse(R.courseId),
+        overrides: R._holeOverrides || {},
+        groupCode: groupCode,
+        isAdmin: isCreator,
+        currentHole: currentHole,
+        scored: Array.from({length: 18}, function(_, i) {
+          return myName ? R.scores[myName][i] > 0 : false;
+        })
+      };
 
       let html = '';
 
@@ -1059,15 +1720,33 @@
       for (let i = 0; i < 18; i++) {
         const anyScored = R.players.some(p => R.scores[p][i] > 0);
         let cls = i === currentHole ? 'active' : (anyScored ? 'scored' : '');
-        if (i > playableHole && i !== currentHole) cls += ' future';
+        if (playOrderPos(i) > playOrderPos(playableHole) && i !== currentHole) cls += ' future';
         html += `<div class="hole-pip ${cls}" onclick="goToHole(${i})">${i+1}</div>`;
       }
       html += '</div>';
+      html += '<button onclick="showHolePicker()" style="width:100%;padding:8px;margin:6px 0 2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#bbb;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.3px">&#8597; Jump to Hole</button>';
+
+      // Admin-only: Manage Temporary Hole — top-level button so it's discoverable.
+      // The modal only operates on the current hole; the label reflects that.
+      if (isCreator) {
+        var overridesMap = R._holeOverrides || {};
+        var currentHasOverride = !!overridesMap[currentHole];
+        var totalOverrides = Object.keys(overridesMap).length;
+        var tempLabel;
+        if (currentHasOverride) {
+          tempLabel = '&#9881; Manage Temp Hole &middot; This hole';
+        } else if (totalOverrides > 0) {
+          tempLabel = '&#9881; Add Temp Hole &middot; ' + totalOverrides + ' active on other holes';
+        } else {
+          tempLabel = '&#9881; Add Temporary Hole';
+        }
+        html += '<button onclick="showTempHoleModal()" style="width:100%;padding:9px;margin:4px 0 2px;background:rgba(245,166,35,0.10);border:1px solid rgba(245,166,35,0.40);border-radius:8px;color:#f5a623;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.3px">' + tempLabel + '</button>';
+      }
 
       // Hole display
       html += `
         <div class="hole-display">
-          <div class="hole-number">${isFutureHole ? 'Preview — ' : ''}Hole ${hole.num}</div>
+          <div class="hole-number">Hole ${hole.num}</div>
           <div class="hole-info-chips">
             <span class="info-chip par-chip">Par ${hole.par}</span>
             <span class="info-chip">${yardage} yds</span>
@@ -1075,18 +1754,6 @@
           </div>
         </div>
       `;
-
-      // Future hole preview banner
-      if (isFutureHole) {
-        html += `<div class="preview-banner">
-          <span class="preview-banner-icon">&#128065;</span>
-          <div>
-            <div class="preview-banner-title">Hole Preview</div>
-            <div class="preview-banner-sub">You're previewing a future hole. Score input is available when you reach this hole.</div>
-          </div>
-          <button class="preview-back-btn" onclick="goToHole(${playableHole})">Go to Hole ${playableHole + 1} &#8594;</button>
-        </div>`;
-      }
 
       // Hole layout image
       if (hole.img) {
@@ -1116,8 +1783,8 @@
         </div>`;
       }
 
-      // YOUR score card — only show if NOT a future hole
-      if (!isFutureHole && myName) {
+      // YOUR score card
+      if (myName) {
         const score = R.scores[myName][currentHole];
         const scoreClass = getScoreClass(score, hole.par);
         const label = getScoreLabel(score, hole.par);
@@ -1173,21 +1840,19 @@
         html += '</div>'; // close player card
       }
 
-      // Hole nav buttons — right under YOUR score counter
-      if (!isFutureHole) {
-        html += '<div class="hole-nav-row">';
-        if (currentHole > 0) {
-          html += `<button class="hole-nav-btn prev" onclick="goToHole(${currentHole - 1})">&larr; Hole ${currentHole}</button>`;
-        } else {
-          html += '<div></div>';
-        }
-        if (currentHole < 17) {
-          html += `<button class="hole-nav-btn next" onclick="goToHole(${currentHole + 1})">Hole ${currentHole + 2} &rarr;</button>`;
-        } else {
-          html += `<button class="hole-nav-btn next" onclick="finishGroupRoundAction()" style="background:var(--gold);color:#1a1a1a;">Finish Round</button>`;
-        }
-        html += '</div>';
+      // Hole nav buttons
+      html += '<div class="hole-nav-row">';
+      if (currentHole > 0) {
+        html += `<button class="hole-nav-btn prev" onclick="goToHole(${currentHole - 1})">&larr; Hole ${currentHole}</button>`;
+      } else {
+        html += '<div></div>';
       }
+      if (currentHole < 17) {
+        html += `<button class="hole-nav-btn next" onclick="goToHole(${currentHole + 1})">Hole ${currentHole + 2} &rarr;</button>`;
+      } else {
+        html += `<button class="hole-nav-btn next" onclick="finishGroupRoundAction()" style="background:var(--gold);color:#1a1a1a;">Finish Round</button>`;
+      }
+      html += '</div>';
 
       // Live players leaderboard — updates in real-time
       html += buildPlayersLeaderboard(R, course, myName);
@@ -1205,15 +1870,13 @@
       `;
 
       // Finish / Leave — every player can save their own round
-      if (!isFutureHole) {
-        html += '<div class="finish-section">';
-        html += '<button class="btn-gold" onclick="finishGroupRoundAction()">Save & Finish</button>';
-        if (R._createdBy === user.uid) {
-          html += '<button class="btn-danger" onclick="endRoundForAll()" style="background:#c0392b;color:#fff;border:none;padding:12px 24px;border-radius:var(--radius);font-weight:700;font-size:14px;cursor:pointer;width:100%">End Round for All</button>';
-        }
-        html += '<button class="btn-secondary" onclick="leaveGroupRound()">Leave</button>';
-        html += '</div>';
+      html += '<div class="finish-section">';
+      html += '<button class="btn-gold" onclick="finishGroupRoundAction()">Save & Finish</button>';
+      if (R._createdBy === user.uid) {
+        html += '<button class="btn-danger" onclick="endRoundForAll()" style="background:#c0392b;color:#fff;border:none;padding:12px 24px;border-radius:var(--radius);font-weight:700;font-size:14px;cursor:pointer;width:100%">End Round for All</button>';
       }
+      html += '<button class="btn-secondary" onclick="leaveGroupRound()">Leave</button>';
+      html += '</div>';
 
       document.getElementById('mainContent').innerHTML = html;
 

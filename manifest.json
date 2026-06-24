@@ -1,11 +1,11 @@
 {
-  "name": "Westchester Golf",
-  "short_name": "WC Golf",
+  "name": "Golf Tracker",
+  "short_name": "Golf Tracker",
   "description": "Live scoring & stats for Westchester County public golf courses",
   "start_url": "index.html?v=106",
   "display": "standalone",
-  "background_color": "#0a0f0d",
-  "theme_color": "#0a0f0d",
+  "background_color": "#132017",
+  "theme_color": "#132017",
   "icons": [
     {
       "src": "icon-192.png",

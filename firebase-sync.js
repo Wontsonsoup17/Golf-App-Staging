@@ -68,55 +68,130 @@ function createGroupRound(uid, displayName, courseId, tee, teeLabel, date) {
 }
 
 // Create a group round with a specific code
-function createGroupRoundWithCode(uid, displayName, courseId, tee, teeLabel, date, code) {
+function createGroupRoundWithCode(uid, displayName, courseId, tee, teeLabel, date, code, startingHole, gameType) {
   return new Promise((resolve, reject) => {
     const roundRef = db.ref('activeRounds/' + code);
+    var isScramble = gameType === 'scramble';
 
     roundRef.once('value').then(snap => {
       if (snap.exists()) {
         var existing = snap.val();
         var status = existing.meta && existing.meta.status;
         if (status !== 'finished' && status !== 'ended') {
-          reject(new Error('That code is already in use. Try a different one.'));
-          return;
+          // The round is still 'active' or 'lobby'. Decide whether it's
+          // really live or just leftover state from an admin who closed
+          // their browser without ending the round.
+          var existingPlayers = existing.players ? Object.keys(existing.players) : [];
+          var anyScored = (function() {
+            var sBuckets = [existing.scores, existing.teamScores];
+            for (var b = 0; b < sBuckets.length; b++) {
+              var bucket = sBuckets[b]; if (!bucket) continue;
+              var keys = Object.keys(bucket);
+              for (var i = 0; i < keys.length; i++) {
+                var holes = bucket[keys[i]] || {};
+                var hk = Object.keys(holes);
+                for (var j = 0; j < hk.length; j++) {
+                  if ((holes[hk[j]] || 0) > 0) return true;
+                }
+              }
+            }
+            return false;
+          })();
+          var createdAt = (existing.meta && existing.meta.createdAt) || 0;
+          // lastActivityAt is bumped on every score/tracking/hole-nav write
+          // (see bumpRoundActivity below). Older rounds without it fall back
+          // to createdAt, which preserves v193 behavior for legacy data.
+          var lastActivityAt = (existing.meta && existing.meta.lastActivityAt) || createdAt;
+          var ageMs = Date.now() - createdAt;
+          var idleMs = Date.now() - lastActivityAt;
+          var IDLE_MS = 15 * 60 * 1000; // 15 min of zero activity → reusable
+          var HARD_STALE_MS = 6 * 60 * 60 * 1000; // safety net for legacy data
+
+          // Treat as stale (free to overwrite) if any of:
+          //   - no live activity in 15 minutes (the real signal — players left)
+          //   - only the host is in the round and no one has scored anything
+          //   - older than 6 hours regardless (backstop)
+          var isStale =
+            idleMs > IDLE_MS ||
+            (existingPlayers.length <= 1 && !anyScored) ||
+            ageMs > HARD_STALE_MS;
+
+          if (!isStale) {
+            var hostUid = existing.meta && existing.meta.createdBy;
+            var hostName = hostUid && existing.players && existing.players[hostUid] && existing.players[hostUid].name;
+            var courseName = typeof getCourse === 'function' ? ((getCourse(existing.meta.courseId) || {}).name) : null;
+            courseName = courseName || (existing.meta && existing.meta.courseId) || 'a course';
+            var ageMin = Math.max(1, Math.round(ageMs / 60000));
+            var ageStr = ageMin < 60 ? ageMin + ' min ago' : (Math.round(ageMin / 6) / 10) + ' hr ago';
+            reject(new Error(
+              'Code "' + code + '" is in use — ' + (hostName || 'someone') +
+              ' is hosting at ' + courseName +
+              ' (' + existingPlayers.length + ' player' + (existingPlayers.length !== 1 ? 's' : '') +
+              ', started ' + ageStr + '). Try a different code, or wait until they finish.'
+            ));
+            return;
+          }
+          // else: fall through and let the new round overwrite the stale data
         }
-        // Round is finished/ended — remove old data and reuse the code
       }
 
-      const roundData = {
-        meta: {
-          courseId: courseId,
-          tee: tee,
-          teeLabel: teeLabel,
-          date: date,
-          createdBy: uid,
-          createdAt: firebase.database.ServerValue.TIMESTAMP,
-          status: 'active'
-        },
-        players: {
-          [uid]: {
-            name: displayName,
-            joinedAt: firebase.database.ServerValue.TIMESTAMP
-          }
-        },
-        scores: {
-          [uid]: arrayToObj(new Array(18).fill(0))
-        },
-        tracking: {
-          [uid]: trackingToObj(createPlayerTracking())
-        },
-        currentHole: {
-          [uid]: 0
-        }
-      };
+      var roundData;
+      if (isScramble) {
+        roundData = {
+          meta: {
+            courseId: courseId,
+            tee: tee,
+            teeLabel: teeLabel,
+            date: date,
+            createdBy: uid,
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            lastActivityAt: firebase.database.ServerValue.TIMESTAMP,
+            status: 'lobby',
+            gameType: 'scramble',
+            startingHole: startingHole || 0,
+            teams: {
+              teamA: { name: '', members: [] },
+              teamB: { name: '', members: [] }
+            }
+          },
+          players: {
+            [uid]: { name: displayName, joinedAt: firebase.database.ServerValue.TIMESTAMP }
+          },
+          teamScores: {
+            teamA: arrayToObj(new Array(18).fill(0)),
+            teamB: arrayToObj(new Array(18).fill(0))
+          },
+          teamHole: { teamA: startingHole || 0, teamB: startingHole || 0 },
+          teamHoleConfirmed: { teamA: {}, teamB: {} }
+        };
+      } else {
+        roundData = {
+          meta: {
+            courseId: courseId,
+            tee: tee,
+            teeLabel: teeLabel,
+            date: date,
+            createdBy: uid,
+            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            lastActivityAt: firebase.database.ServerValue.TIMESTAMP,
+            status: 'active',
+            startingHole: startingHole || 0
+          },
+          players: {
+            [uid]: { name: displayName, joinedAt: firebase.database.ServerValue.TIMESTAMP }
+          },
+          scores: { [uid]: arrayToObj(new Array(18).fill(0)) },
+          tracking: { [uid]: trackingToObj(createPlayerTracking()) },
+          currentHole: { [uid]: 0 }
+        };
+      }
 
       return roundRef.set(roundData).then(() => {
-        // Notify admin via push notification
         var courseName = typeof getCourse === 'function' ? (getCourse(courseId) || {}).name || courseId : courseId;
         if (typeof notifyAdmin === 'function') {
           notifyAdmin(
             'New Round Started',
-            displayName + ' started a round at ' + courseName + ' [' + code + ']',
+            displayName + ' started a ' + (isScramble ? 'scramble ' : '') + 'round at ' + courseName + ' [' + code + ']',
             'golf,round_start'
           );
         }
@@ -137,7 +212,12 @@ function joinGroupRound(uid, displayName, code) {
     var roundData = snap.val();
     var meta = roundData.meta;
     if (!meta) throw new Error('Round data is corrupted. Please create a new round.');
-    if (meta.status !== 'active') throw new Error('This round has already finished');
+    var isScramble = meta.gameType === 'scramble';
+    if (isScramble) {
+      if (meta.status !== 'lobby' && meta.status !== 'active') throw new Error('This round has already finished');
+    } else {
+      if (meta.status !== 'active') throw new Error('This round has already finished');
+    }
 
     // Check if this player already finished this round
     if (roundData.finishedPlayers && roundData.finishedPlayers[uid]) {
@@ -155,9 +235,11 @@ function joinGroupRound(uid, displayName, code) {
       name: displayName,
       joinedAt: firebase.database.ServerValue.TIMESTAMP
     };
-    updates['scores/' + uid] = arrayToObj(new Array(18).fill(0));
-    updates['tracking/' + uid] = trackingToObj(createPlayerTracking());
-    updates['currentHole/' + uid] = 0;
+    if (!isScramble) {
+      updates['scores/' + uid] = arrayToObj(new Array(18).fill(0));
+      updates['tracking/' + uid] = trackingToObj(createPlayerTracking());
+      updates['currentHole/' + uid] = 0;
+    }
 
     return roundRef.update(updates).then(function() {
       // Notify admin that someone joined
@@ -184,19 +266,42 @@ function listenToGroupRound(code, callback) {
   return () => ref.off('value', handler);
 }
 
+// Bump the round's last-activity timestamp. Used by code-reuse to tell
+// whether anyone is actually still playing. Fire-and-forget — we never
+// want a failure here to block a score write.
+function bumpRoundActivity(code) {
+  try {
+    db.ref('activeRounds/' + code + '/meta/lastActivityAt').set(firebase.database.ServerValue.TIMESTAMP).catch(function() {});
+  } catch (e) {}
+}
+
 // Update a single hole score for the current user
 function updateGroupScore(code, uid, holeIndex, score) {
+  bumpRoundActivity(code);
   return db.ref('activeRounds/' + code + '/scores/' + uid + '/' + holeIndex).set(score);
 }
 
 // Update tracking data for the current user on a specific hole
 function updateGroupTracking(code, uid, trackType, holeIndex, value) {
+  bumpRoundActivity(code);
   return db.ref('activeRounds/' + code + '/tracking/' + uid + '/' + trackType + '/' + holeIndex).set(value);
 }
 
 // Update current hole view for a user
 function updateGroupCurrentHole(code, uid, holeIndex) {
+  bumpRoundActivity(code);
   return db.ref('activeRounds/' + code + '/currentHole/' + uid).set(holeIndex);
+}
+
+// Set/replace a temporary hole override on the live session.
+// override = { par, yards, hcp }. Visible to all players in real-time via the existing listener.
+function setHoleOverride(code, holeIndex, override) {
+  return db.ref('activeRounds/' + code + '/meta/holeOverrides/' + holeIndex).set(override);
+}
+
+// Remove an override (revert to original course hole)
+function clearHoleOverride(code, holeIndex) {
+  return db.ref('activeRounds/' + code + '/meta/holeOverrides/' + holeIndex).remove();
 }
 
 // Finish a group round (only creator should call this)
@@ -421,10 +526,85 @@ function groupDataToRound(data, code) {
     _groupCode: code,
     _createdBy: meta.createdBy,
     _status: meta.status,
+    _startingHole: meta.startingHole || 0,
     _uidToName: uidToName,
     _nameToUid: nameToUid,
-    _playerUids: playerUids
+    _playerUids: playerUids,
+    _gameType: meta.gameType || 'standard',
+    _teams: meta.teams || null,
+    _teamScores: data.teamScores || null,
+    _teamHole: data.teamHole || null,
+    _teamHoleConfirmed: data.teamHoleConfirmed || null,
+    _holeOverrides: meta.holeOverrides || null
   };
+}
+
+// ==================== SCRAMBLE GAME MODE ====================
+
+// Assign players to teams in a scramble lobby
+function setScrambleTeams(code, teamAuids, teamBuids) {
+  return db.ref('activeRounds/' + code + '/meta/teams').update({
+    teamA: { name: '', members: teamAuids },
+    teamB: { name: '', members: teamBuids }
+  });
+}
+
+// Start the scramble round (lobby → active)
+function startScrambleRound(code) {
+  return db.ref('activeRounds/' + code + '/meta/status').set('active');
+}
+
+// Set team name — only writes if not already set (first response wins)
+function setScrambleTeamName(code, teamKey, name) {
+  var ref = db.ref('activeRounds/' + code + '/meta/teams/' + teamKey + '/name');
+  return ref.once('value').then(function(snap) {
+    if (!snap.val()) return ref.set(name);
+  });
+}
+
+// Update a team's score for a hole
+function updateScrambleScore(code, teamKey, holeIndex, score) {
+  bumpRoundActivity(code);
+  return db.ref('activeRounds/' + code + '/teamScores/' + teamKey + '/' + holeIndex).set(score);
+}
+
+// Reset confirmations when score changes
+function resetScrambleConfirmations(code, teamKey) {
+  return db.ref('activeRounds/' + code + '/teamHoleConfirmed/' + teamKey).set({});
+}
+
+// Confirm hole score — advances teamHole when all team members confirm
+function confirmScrambleHole(code, teamKey, uid, allTeamUids) {
+  bumpRoundActivity(code);
+  var base = 'activeRounds/' + code;
+  return db.ref(base + '/teamHoleConfirmed/' + teamKey + '/' + uid).set(true).then(function() {
+    return db.ref(base + '/teamHoleConfirmed/' + teamKey).once('value').then(function(snap) {
+      var confirmed = snap.val() || {};
+      var allDone = allTeamUids.every(function(u) { return confirmed[u] === true; });
+      if (allDone) {
+        return db.ref(base + '/teamHole/' + teamKey).once('value').then(function(hSnap) {
+          var cur = hSnap.val() || 0;
+          if (cur >= 17) return; // Already on last hole — finish handled separately
+          var updates = {};
+          updates['teamHole/' + teamKey] = cur + 1;
+          updates['teamHoleConfirmed/' + teamKey] = {};
+          return db.ref(base).update(updates);
+        });
+      }
+    });
+  });
+}
+
+// End scramble round (admin ends for all)
+function endScrambleRound(code) {
+  return db.ref('activeRounds/' + code + '/meta').update({
+    status: 'ended',
+    finishedAt: firebase.database.ServerValue.TIMESTAMP
+  }).then(function() {
+    setTimeout(function() {
+      db.ref('activeRounds/' + code).remove().catch(function() {});
+    }, 300000);
+  });
 }
 
 // ==================== CONNECTION STATUS ====================

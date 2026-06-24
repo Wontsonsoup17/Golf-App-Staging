@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Test User (dev only)</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<div class="hero" style="padding-bottom:16px">
+  <div class="hero-logo">&#9971;</div>
+  <h1>Test User Setup</h1>
+  <p>Dev / playground environment only</p>
+</div>
+
+<div class="main" style="padding-top:0">
+  <div class="auth-card">
+    <div id="status" style="font-size:14px;line-height:1.6;color:var(--text-light)">Starting…</div>
+    <div id="creds" style="display:none;margin-top:16px;padding:14px;background:rgba(255,255,255,0.05);border-radius:10px;font-size:14px">
+      <div>Username: <strong>test</strong></div>
+      <div>Password: <strong>testtest</strong></div>
+    </div>
+    <a id="goLogin" href="login.html" style="display:none;margin-top:18px" class="btn-gold">Go to Sign In</a>
+  </div>
+  <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:16px;padding:0 20px;line-height:1.5">
+    This page is for the dev environment only. Delete <code>make-test-user.html</code> before deploying to live.
+  </div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="shared.js"></script>
+<script>
+  var statusEl = document.getElementById('status');
+  function show(msg) { statusEl.innerHTML = msg; }
+
+  var host = location.hostname;
+  var isLocal = (host !== 'westchester-golf-app.web.app' && host !== 'westchester-golf-app.firebaseapp.com');
+
+  if (!isLocal) {
+    show('<span style="color:var(--red,#ff5252)">Refused: this page only runs on localhost (the test environment). ' +
+         'You are on "' + host + '", which uses the LIVE database.</span>');
+  } else {
+    var USERNAME = 'test';
+    var PASSWORD = 'testtest';
+    var email = USERNAME + '@westchestergolf.app';
+
+    show('Creating the <strong>test</strong> account in the playground database…');
+
+    auth.createUserWithEmailAndPassword(email, PASSWORD)
+      .then(function(cred) {
+        return cred.user.updateProfile({ displayName: USERNAME }).then(function() {
+          return Promise.all([
+            db.ref('usernames/' + USERNAME).set(cred.user.uid),
+            db.ref('users/' + cred.user.uid + '/profile').set({ username: USERNAME, createdAt: Date.now() }),
+            db.ref('credentials/' + USERNAME + '/securityQuestion').set(0),
+            db.ref('credentials/' + USERNAME + '/securityAnswer').set(simpleHash('test'))
+          ]);
+        });
+      })
+      .then(function() {
+        return auth.signOut();
+      })
+      .then(function() {
+        show('<span style="color:var(--green-accent,#00e676)">&#10003; Test account created.</span>');
+        document.getElementById('creds').style.display = 'block';
+        document.getElementById('goLogin').style.display = 'block';
+      })
+      .catch(function(err) {
+        show('<span style="color:var(--red,#ff5252)">Could not create account: ' + (err && err.message ? err.message : err) + '</span>');
+      });
+  }
+</script>
+</body>
+</html>

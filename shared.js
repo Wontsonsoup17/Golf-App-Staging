@@ -1,7 +1,7 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed so users always
 // get fresh files. The popup is handled separately via checkUpdatePopup.
-var APP_VERSION = '166';
+var APP_VERSION = '190';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -21,36 +21,54 @@ var APP_VERSION = '166';
 })();
 
 // ==================== UPDATE POPUP ====================
-// Shows once per version bump, on every login, until the user taps Apply Update.
-// Compares APP_VERSION against app_v_notified (last version user was notified about).
-// Just bump APP_VERSION above to trigger the popup for all users on next login.
+// Firebase is the source of truth for the latest version.
+// When admin (kohyo) logs in, they publish APP_VERSION to config/latestVersion.
+// checkUpdatePopup reads that value and shows the popup to anyone behind it.
+// _latestVersionSeen: module-level so forceVersionUpdate can write app_v_notified before redirecting.
+var _latestVersionSeen = 0;
+
 window.checkUpdatePopup = function() {
-  var notified = localStorage.getItem('app_v_notified');
-
-  // First-ever install — set silently, no popup
-  if (!notified) {
-    localStorage.setItem('app_v_notified', APP_VERSION);
-    return;
-  }
-
-  // Already up to date
-  if (notified === APP_VERSION) return;
-
-  // New version detected — show popup
   if (document.getElementById('versionUpdateModal')) return;
 
-  var modal = document.createElement('div');
-  modal.id = 'versionUpdateModal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
-  modal.innerHTML =
-    '<div style="background:var(--card-bg,#1a2e1a);border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:32px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
-      '<div style="font-size:48px;margin-bottom:12px">&#x1F504;</div>' +
-      '<h3 style="color:#fff;font-size:20px;margin-bottom:8px">New Update Available</h3>' +
-      '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.6;margin-bottom:24px">A new version of Westchester Golf is ready. Tap below to apply the update and get the latest features.</p>' +
-      '<button onclick="forceVersionUpdate()" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-bottom:10px">&#x1F504; Apply Update</button>' +
-      '<button onclick="localStorage.setItem(\'app_v_notified\',\'' + APP_VERSION + '\');document.getElementById(\'versionUpdateModal\').remove()" style="width:100%;padding:10px;background:transparent;color:var(--text-muted,#999);font-size:13px;border:none;cursor:pointer">Maybe Later</button>' +
-    '</div>';
-  document.body.appendChild(modal);
+  function showPopup(latestVersion) {
+    // Primary guard: the inline version script always sets app_v to the currently
+    // running code version. After a successful update + fresh reload, app_v will
+    // equal latestVersion, so we never show the popup again — regardless of what
+    // happened to app_v_notified during localStorage.clear() in force-update.html.
+    var runningV = parseInt(localStorage.getItem('app_v'), 10) || 0;
+    if (runningV >= latestVersion) return;
+    // Secondary guard: user dismissed via "Maybe Later" for this version.
+    var notifiedNum = parseInt(localStorage.getItem('app_v_notified'), 10) || 0;
+    if (notifiedNum >= latestVersion) return;
+
+    _latestVersionSeen = latestVersion;
+
+    var modal = document.createElement('div');
+    modal.id = 'versionUpdateModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+    modal.innerHTML =
+      '<div style="background:var(--card-bg,#1a2e1a);border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:32px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
+        '<div style="font-size:48px;margin-bottom:12px">&#x1F504;</div>' +
+        '<h3 style="color:#fff;font-size:20px;margin-bottom:8px">New Update Available</h3>' +
+        '<p style="color:var(--text-muted,#999);font-size:13px;line-height:1.6;margin-bottom:24px">A new version of Westchester Golf is ready. Tap below to apply the update and get the latest features.</p>' +
+        '<button onclick="forceVersionUpdate()" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-bottom:10px">&#x1F504; Apply Update</button>' +
+        '<button onclick="localStorage.setItem(\'app_v_notified\',\'' + latestVersion + '\');document.getElementById(\'versionUpdateModal\').remove()" style="width:100%;padding:10px;background:transparent;color:var(--text-muted,#999);font-size:13px;border:none;cursor:pointer">Maybe Later</button>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+
+  // Read the admin-published latest version from Firebase
+  if (typeof _firebaseDB !== 'undefined' && _firebaseDB) {
+    _firebaseDB.ref('config/latestVersion').once('value').then(function(snap) {
+      var latest = snap.exists() ? parseInt(snap.val(), 10) : parseInt(APP_VERSION, 10);
+      showPopup(latest);
+    }).catch(function() {
+      // Firebase unavailable — fall back to local version
+      showPopup(parseInt(APP_VERSION, 10));
+    });
+  } else {
+    showPopup(parseInt(APP_VERSION, 10));
+  }
 };
 
 // ==================== FIREBASE VERSION CHECK ====================
@@ -83,15 +101,20 @@ window.checkRequiredVersion = function() {
 };
 
 window.forceVersionUpdate = function() {
+  // Pass the version as a URL param — force-update.html clears all localStorage,
+  // so it must restore app_v_notified afterward to prevent the popup from looping.
+  var vToMark = _latestVersionSeen || parseInt(APP_VERSION, 10);
+  var dest = 'force-update.html?notified=' + vToMark;
+
   if (typeof auth !== 'undefined' && auth.signOut) {
     auth.signOut().then(function() {
-      window.location.href = 'force-update.html';
+      window.location.href = dest;
     }).catch(function() {
-      window.location.href = 'force-update.html';
+      window.location.href = dest;
     });
   } else {
     localStorage.removeItem('wg-session');
-    window.location.href = 'force-update.html';
+    window.location.href = dest;
   }
 };
 
@@ -462,6 +485,39 @@ const COURSES = [
       { num:16, par:4, black:439, blue:395, white:382, green:309, red:309, hcp:6,  img:'https://www.pebblewoodgolf.com/00062699/wp-content/uploads/sites/8703/2023/01/hole-16.jpg' },
       { num:17, par:3, black:150, blue:145, white:130, green:130, red:110, hcp:18, img:'https://www.pebblewoodgolf.com/00062699/wp-content/uploads/sites/8703/2023/01/hole-17.jpg' },
       { num:18, par:4, black:441, blue:388, white:323, green:323, red:280, hcp:8,  img:'https://www.pebblewoodgolf.com/00062699/wp-content/uploads/sites/8703/2023/01/hole-18.jpg' }
+    ]
+  },
+
+  {
+    id: 'west-point', name: 'West Point Golf Course',
+    address: '1230 NY Route 218, West Point, NY 10996', phone: '(845) 938-2435', par: 70,
+    group: 'other',
+    link: 'https://westpoint.armymwr.com/programs/west-point-golf-course',
+    overview: 'https://westpoint.armymwr.com/application/files/4014/9335/3316/CourseMap.jpg',
+    tees: {
+      black:  { label: 'Black',  yards: 6036, rating: 69.9, slope: 130 },
+      silver: { label: 'Silver', yards: 5573, rating: 67.8, slope: 126 },
+      gold:   { label: 'Gold',   yards: 4647, rating: 67.9, slope: 115 }
+    },
+    holes: [
+      { num:1,  par:4, black:372, silver:323, gold:313, hcp:6  },
+      { num:2,  par:3, black:175, silver:151, gold:127, hcp:16 },
+      { num:3,  par:4, black:360, silver:342, gold:285, hcp:9  },
+      { num:4,  par:5, black:495, silver:472, gold:374, hcp:11 },
+      { num:5,  par:4, black:400, silver:365, gold:283, hcp:3  },
+      { num:6,  par:3, black:191, silver:186, gold:169, hcp:17 },
+      { num:7,  par:5, black:509, silver:498, gold:390, hcp:2  },
+      { num:8,  par:4, black:380, silver:359, gold:337, hcp:7  },
+      { num:9,  par:3, black:201, silver:185, gold:153, hcp:14 },
+      { num:10, par:4, black:326, silver:309, gold:269, hcp:12 },
+      { num:11, par:3, black:175, silver:155, gold:121, hcp:10 },
+      { num:12, par:4, black:389, silver:365, gold:300, hcp:1  },
+      { num:13, par:3, black:154, silver:132, gold:120, hcp:18 },
+      { num:14, par:4, black:418, silver:377, gold:331, hcp:5  },
+      { num:15, par:4, black:350, silver:303, gold:220, hcp:15 },
+      { num:16, par:3, black:163, silver:148, gold:117, hcp:13 },
+      { num:17, par:5, black:485, silver:429, gold:361, hcp:4  },
+      { num:18, par:5, black:493, silver:474, gold:377, hcp:8  }
     ]
   }
 ];
@@ -835,6 +891,47 @@ function formatDiff(total, par) {
   const diff = total - par;
   if (diff === 0) return 'E';
   return diff > 0 ? '+' + diff : diff.toString();
+}
+
+// ==================== TEMPORARY HOLE OVERRIDES ====================
+// Live-session-only overrides for when the course swaps in a temp hole.
+// Never mutates the COURSES array — applyHoleOverrides returns a clone.
+
+// Average hcp of other holes on the course with the same par. Falls back to
+// the replaced hole's existing hcp if no same-par siblings exist.
+function computeAutoHcp(course, newPar, replacedHoleIndex) {
+  if (!course || !course.holes) return 1;
+  var matching = course.holes.filter(function(h, i) {
+    return i !== replacedHoleIndex && h.par === newPar;
+  });
+  if (!matching.length) return course.holes[replacedHoleIndex].hcp;
+  var sum = matching.reduce(function(s, h) { return s + (h.hcp || 0); }, 0);
+  return Math.max(1, Math.round(sum / matching.length));
+}
+
+// Returns a CLONE of the course with overrides applied. Original course is
+// never mutated. overrides is an object keyed by hole index: { [i]: {par, yards, hcp} }
+function applyHoleOverrides(course, overrides) {
+  if (!course) return course;
+  if (!overrides || !Object.keys(overrides).length) return course;
+  var teeKeys = Object.keys(course.tees || {});
+  var cloned = Object.assign({}, course);
+  cloned.holes = course.holes.map(function(h, i) {
+    var o = overrides[i];
+    if (!o) return h;
+    var newHole = Object.assign({}, h);
+    newHole.par = o.par;
+    if (typeof o.hcp === 'number') newHole.hcp = o.hcp;
+    // Apply yards to every tee key so display is consistent regardless of selected tee
+    teeKeys.forEach(function(tk) { newHole[tk] = o.yards; });
+    // Temp holes have no published layout image
+    newHole.img = null;
+    newHole._isTemp = true;
+    return newHole;
+  });
+  // Recompute course total par so headers/totals reflect actual play
+  cloned.par = cloned.holes.reduce(function(s, h) { return s + h.par; }, 0);
+  return cloned;
 }
 
 // Create blank tracking data for a player (18 holes)

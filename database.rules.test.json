@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "credentials": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "usernames": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "nameIndex": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "activeRounds": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "appVersion": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
