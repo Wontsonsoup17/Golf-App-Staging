@@ -243,7 +243,7 @@ requireAuth(function(user) {
     if (!rounds.length) {
       document.getElementById('statGrid').innerHTML = '';
       document.getElementById('leaderboardSection').innerHTML =
-        '<div class="empty-state"><div class="icon">&#128202;</div><p>Play some rounds to see your stats!<br><a href="index.html">Get started</a></p></div>';
+        '<div class="empty-state"><div class="icon"><img src="images/ic-board.png" class="empty-logo" alt="Board"></div><p>Play some rounds to see your stats!<br><a href="index.html">Get started</a></p></div>';
       return;
     }
 

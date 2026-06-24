@@ -84,7 +84,7 @@
     function renderHistory() {
       const container = document.getElementById('historyList');
       if (!rounds.length) {
-        container.innerHTML = `<div class="empty-state"><div class="icon">&#128203;</div><p>No rounds yet.<br><a href="index.html">Start playing</a> to build your history.</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="icon"><img src="images/ic-history.png" class="empty-logo" alt="History"></div><p>No rounds yet.<br><a href="index.html">Start playing</a> to build your history.</p></div>`;
         return;
       }
 
