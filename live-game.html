@@ -317,7 +317,7 @@
 
 <div class="main" id="mainContent">
   <div class="empty-state">
-    <div class="icon">&#127948;</div>
+    <div class="icon"><img src="images/golf-tracker-logo.png?v=2" class="empty-logo" alt="Golf Tracker"></div>
     <p>Loading...</p>
   </div>
 </div>
@@ -398,7 +398,7 @@
     if (!R) {
       document.getElementById('mainContent').innerHTML =
         '<div class="empty-state">' +
-          '<div class="icon">&#127948;</div>' +
+          '<div class="icon"><img src="images/golf-tracker-logo.png?v=2" class="empty-logo" alt="Golf Tracker"></div>' +
           '<p>No active round.<br><a href="index.html">Choose a course</a> to start playing.</p>' +
         '</div>';
       return;
@@ -505,7 +505,7 @@
       if (!course) {
         document.getElementById('mainContent').innerHTML =
           '<div class="empty-state">' +
-            '<div class="icon">&#127948;</div>' +
+            '<div class="icon"><img src="images/golf-tracker-logo.png?v=2" class="empty-logo" alt="Golf Tracker"></div>' +
             '<p>Course not found.<br><a href="index.html">Back to home</a></p>' +
           '</div>';
         return;
@@ -535,7 +535,7 @@
       if (!gotData) {
         document.getElementById('mainContent').innerHTML =
           '<div class="empty-state">' +
-            '<div class="icon">&#127948;</div>' +
+            '<div class="icon"><img src="images/golf-tracker-logo.png?v=2" class="empty-logo" alt="Golf Tracker"></div>' +
             '<p>Round not found.<br><a href="scorecard.html?group=' + groupCode + '">Back to scorecard</a> or <a href="index.html">home</a></p>' +
           '</div>';
       }
