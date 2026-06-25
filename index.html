@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#132017}</style>
 <script>
-(function(){var v='195';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='201';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=195">
+<link rel="stylesheet" href="shared.css?v=201">
 </head>
 <body>
 
@@ -69,20 +69,20 @@
   </div>
 
   <button class="see-courses-btn" id="wcCoursesBtn" onclick="togglePanel('wcPanel','wcChevron')"><span class="menu-icon">&#9971;</span> <span>Westchester Courses</span> <span class="sc-chevron" id="wcChevron">&#9662;</span></button>
-  <div id="wcPanel" style="display:none">
+  <div id="wcPanel" class="course-panel">
     <div id="courseGrid"></div>
   </div>
   <button class="see-courses-btn" id="otherCoursesBtn" onclick="togglePanel('otherPanel','otherChevron')"><span class="menu-icon">&#9971;</span> <span>Other Courses</span> <span class="sc-chevron" id="otherChevron">&#9662;</span></button>
-  <div id="otherPanel" style="display:none">
+  <div id="otherPanel" class="course-panel">
     <div id="otherCourseGrid"></div>
   </div>
 </div>
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=195"></script>
-<script src="shared.js?v=195"></script>
-<script src="firebase-sync.js?v=195"></script>
+<script src="firebase-config.js?v=201"></script>
+<script src="shared.js?v=201"></script>
+<script src="firebase-sync.js?v=201"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('courses');
@@ -324,10 +324,17 @@ function switchAction(which){
 <script>
 function togglePanel(panelId, chevronId){
   var p=document.getElementById(panelId); if(!p) return;
-  var open=(p.style.display==="none");
-  p.style.display=open?"":"none";
-  var ch=document.getElementById(chevronId); if(ch) ch.innerHTML=open?"&#9652;":"&#9662;";
-  if(open) setTimeout(function(){ p.scrollIntoView({behavior:"smooth",block:"nearest"}); },60);
+  var ch=document.getElementById(chevronId);
+  var btn=(ch&&ch.closest)?ch.closest(".see-courses-btn"):null;
+  if(p.classList.contains("open")){
+    p.style.maxHeight=p.scrollHeight+"px";
+    requestAnimationFrame(function(){ p.style.maxHeight="0px"; });
+    p.classList.remove("open"); if(btn) btn.classList.remove("open");
+  } else {
+    p.classList.add("open"); if(btn) btn.classList.add("open");
+    p.style.maxHeight=p.scrollHeight+"px";
+    setTimeout(function(){ if(p.classList.contains("open")) p.style.maxHeight="2000px"; },480);
+  }
 }
 </script>
 </body>

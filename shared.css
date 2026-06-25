@@ -2804,3 +2804,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 
 /* Lift bottom nav above iPhone curved edge / home indicator */
 .bottom-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+
+/* Smooth expand/collapse for course panels */
+.course-panel { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.45s cubic-bezier(0.22,0.61,0.36,1), opacity 0.4s ease; }
+.course-panel.open { opacity: 1; }
+.see-courses-btn .sc-chevron { display: inline-block; transition: transform 0.35s ease; }
+.see-courses-btn.open .sc-chevron { transform: rotate(180deg); }

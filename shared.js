@@ -1,7 +1,7 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed so users always
 // get fresh files. The popup is handled separately via checkUpdatePopup.
-var APP_VERSION = '190';
+var APP_VERSION = '201';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {

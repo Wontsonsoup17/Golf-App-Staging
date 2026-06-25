@@ -1,5 +1,5 @@
 // Service Worker — forces network-first loading to bypass HTTP cache
-var SW_VERSION = '111';
+var SW_VERSION = '121';
 
 self.addEventListener('install', function(event) {
   // Take control immediately, don't wait for old SW to finish
