@@ -275,6 +275,17 @@ requireAuth(function(user) {
       return total - parPlayed(r, p);
     }
 
+    // Holes the player actually scored
+    function holesPlayedCount(r, p) {
+      return r.scores[p].reduce(function(a, s) { return a + (s > 0 ? 1 : 0); }, 0);
+    }
+    // Projected full-18 to-par for incomplete rounds: scale to-par by holes played
+    function projToPar(r, p) {
+      var hp = holesPlayedCount(r, p);
+      var tp = toPar(r, p);
+      return (hp > 0 && hp < 18) ? Math.round(tp * 18 / hp) : tp;
+    }
+
     // True if last 3 rounds are strictly improving
     function isOnFire(p) {
       var recent = sortedRounds.filter(function(r) { return validEntry(r, p); }).slice(-3);
@@ -321,10 +332,11 @@ requireAuth(function(user) {
         var pp = parPlayed(r, p);
         var total = r.scores[p].reduce(function(a, b) { return a + b; }, 0);
         var tp = total - pp;
-        if (!ps[p]) ps[p] = { rounds: 0, totalScore: 0, totalPar: 0, wins: 0, bestToPar: Infinity, eagles: 0, birdies: 0 };
+        if (!ps[p]) ps[p] = { rounds: 0, totalScore: 0, totalPar: 0, totalProjToPar: 0, wins: 0, bestToPar: Infinity, eagles: 0, birdies: 0 };
         ps[p].rounds++;
         ps[p].totalScore += total;
         ps[p].totalPar += pp;
+        ps[p].totalProjToPar += projToPar(r, p);
         if (tp < ps[p].bestToPar) ps[p].bestToPar = tp;
         // Eagle / birdie counts
         if (r.holePars) {
@@ -417,9 +429,10 @@ requireAuth(function(user) {
         if (!validEntry(r, p)) return;
         var pp = parPlayed(r, p);
         var total = r.scores[p].reduce(function(a, b) { return a + b; }, 0);
-        if (!monthlyPs[p]) monthlyPs[p] = { totalScore: 0, totalPar: 0, rounds: 0 };
+        if (!monthlyPs[p]) monthlyPs[p] = { totalScore: 0, totalPar: 0, totalProjToPar: 0, rounds: 0 };
         monthlyPs[p].totalScore += total;
         monthlyPs[p].totalPar += pp;
+        monthlyPs[p].totalProjToPar += projToPar(r, p);
         monthlyPs[p].rounds++;
       });
     });
@@ -475,7 +488,7 @@ requireAuth(function(user) {
       // Build sorted player list
       var players = Object.keys(ps).map(function(name) {
         var d = ps[name];
-        var avg = (d.totalScore - d.totalPar) / d.rounds;
+        var avg = d.totalProjToPar / d.rounds;
         return { name: name, rounds: d.rounds, wins: d.wins, avg: avg, best: d.bestToPar };
       });
 
@@ -639,7 +652,7 @@ requireAuth(function(user) {
       // Podium — top 3 by monthly avg (last 30 days), only if 3+ players this month
       var podiumHtml = '';
       var byMonthlyAvg = Object.keys(monthlyPs).map(function(p) {
-        var avg = (monthlyPs[p].totalScore - monthlyPs[p].totalPar) / monthlyPs[p].rounds;
+        var avg = monthlyPs[p].totalProjToPar / monthlyPs[p].rounds;
         return { name: p, avg: avg, rounds: monthlyPs[p].rounds };
       }).sort(function(a, b) { return a.avg - b.avg; });
 
