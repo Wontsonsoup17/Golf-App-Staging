@@ -2801,3 +2801,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 
 /* Homepage version badge (top right) */
 .version-badge { display:inline-flex; align-items:center; font-size:12px; font-weight:700; letter-spacing:0.5px; color:var(--gold); border:1px solid rgba(201,162,75,0.4); border-radius:999px; padding:3px 9px; }
+
+/* Lift bottom nav above iPhone curved edge / home indicator */
+.bottom-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
