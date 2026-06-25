@@ -87,6 +87,7 @@
   requireAuth(function(user) {
     renderBottomNav('courses');
     renderUserHeader(user);
+    var __ha=document.getElementById('headerActions'); if(__ha) __ha.innerHTML='<span class="version-badge">V 2.0</span>';
     renderActiveRoundBanner();
     renderBroadcastBanner();
 

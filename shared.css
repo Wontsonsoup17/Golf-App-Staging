@@ -2798,3 +2798,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .user-avatar.logo-avatar .user-avatar-img { object-fit: contain; padding: 3px; }
 .profile-panel-avatar.logo-avatar { background: #0d1812; }
 .profile-panel-avatar.logo-avatar img { object-fit: contain; padding: 7px; }
+
+/* Homepage version badge (top right) */
+.version-badge { display:inline-flex; align-items:center; font-size:12px; font-weight:700; letter-spacing:0.5px; color:var(--gold); border:1px solid rgba(201,162,75,0.4); border-radius:999px; padding:3px 9px; }
