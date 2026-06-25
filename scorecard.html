@@ -1520,6 +1520,8 @@
     };
 
     window.scrambleEndForAll = function() {
+      var _sd = window._lastScrambleData;
+      if (_sd && _sd.meta && _sd.meta.createdBy !== user.uid) { alert('Only the host can end the round for everyone.'); return; }
       if (!confirm('End the round for all players? All scores will be saved.')) return;
       var data = window._lastScrambleData;
       if (data) saveScrambleRound(data);
