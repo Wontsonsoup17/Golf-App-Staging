@@ -3,7 +3,51 @@
 <head>
 <style>html,body{background:#132017}</style>
 <script>
-(function(){var v='204';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+/* Storage namespacing — must run before any other script on the page.
+   Live and staging are BOTH served from wontsonsoup17.github.io, and browsers
+   scope localStorage to the ORIGIN, not the path. Without this, the dev site
+   shares the real site's session, cached rounds, avatars and version flags:
+   signing out of one signs out the other, and a localStorage.clear() on the dev
+   site wipes real data.
+
+   The prefix is decided by path/host, NOT by the firebase IS_PLAYGROUND rule,
+   because the HTML files are identical on both deployments (only
+   firebase-config.js differs). On LIVE the prefix is '' and this whole shim
+   no-ops, so live behaviour is byte-for-byte unchanged and no user is signed
+   out. */
+(function () {
+  var h = location.hostname, p = location.pathname || '';
+  var pre = (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0') ? 'dev-'
+          : (p.indexOf('/Golf-App-Staging') === 0) ? 'stg-'
+          : '';
+  if (!pre) return;                         // live — leave everything alone
+  var real;
+  try { real = window.localStorage; if (!real) return; } catch (e) { return; }
+  function mine() {
+    var out = [];
+    for (var i = 0; i < real.length; i++) {
+      var k = real.key(i);
+      if (k && k.indexOf(pre) === 0) out.push(k);
+    }
+    return out;
+  }
+  var shim = {
+    getItem:    function (k) { return real.getItem(pre + k); },
+    setItem:    function (k, v) { return real.setItem(pre + k, v); },
+    removeItem: function (k) { return real.removeItem(pre + k); },
+    // Only ever clears this build's own keys — never the live site's.
+    clear:      function () { mine().forEach(function (k) { real.removeItem(k); }); },
+    key:        function (i) { var a = mine(); return i < a.length ? a[i].slice(pre.length) : null; },
+    get length() { return mine().length; }
+  };
+  try {
+    Object.defineProperty(window, 'localStorage',
+      { value: shim, configurable: true, writable: true });
+  } catch (e) { /* if it fails we simply keep shared storage — today's behaviour */ }
+})();
+</script>
+<script>
+(function(){var v='205';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +59,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Live Game - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=204">
+<link rel="stylesheet" href="shared.css?v=205">
 <style>
   .live-back-btn {
     display: flex;
@@ -324,9 +368,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=204"></script>
-<script src="shared.js?v=204"></script>
-<script src="firebase-sync.js?v=204"></script>
+<script src="firebase-config.js?v=205"></script>
+<script src="shared.js?v=205"></script>
+<script src="firebase-sync.js?v=205"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('live');
