@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#132017}</style>
 <script>
-(function(){var v='203';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='204';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>My Stats - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=203">
+<link rel="stylesheet" href="shared.css?v=204">
 </head>
 <body>
 <div class="user-header" id="userHeader"></div>
@@ -39,9 +39,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=203"></script>
-<script src="shared.js?v=203"></script>
-<script src="firebase-sync.js?v=203"></script>
+<script src="firebase-config.js?v=204"></script>
+<script src="shared.js?v=204"></script>
+<script src="firebase-sync.js?v=204"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('personal');
@@ -213,7 +213,40 @@
         }
       }
 
+      // ── Games played, year to date (this account only) ──────
+      // personal.html is fed by fbLoadRounds(user.uid), so `rounds` only ever
+      // contains this user's own rounds — no other player's games can be
+      // counted here.
+      //
+      // Dates are 'YYYY-MM-DD' strings. Compare the year prefix as a string
+      // rather than building a Date: new Date('2026-01-01') parses as UTC
+      // midnight, which renders as Dec 31 in any negative UTC offset and would
+      // drop New Year's Day rounds out of the year.
+      var ytdYear = new Date().getFullYear();
+      var ytdFull = 0, ytdPartial = 0;
+      rounds.forEach(function(r) {
+        if (typeof r.date !== 'string' || r.date.slice(0, 4) !== String(ytdYear)) return;
+        var me = findMe(r, myName);
+        if (!me || !r.scores[me]) return;
+        var holes = r.scores[me].filter(function(s) { return s > 0; }).length;
+        if (holes === 18) ytdFull++;
+        else if (holes >= 9) ytdPartial++;   // kept separate, never added in
+      });
+
+      var ytdTile =
+        '<div class="stat-box" style="grid-column:1 / -1">' +
+          '<div class="stat-value">' + ytdFull + '</div>' +
+          '<div class="stat-label">Full 18-Hole Rounds &bull; ' + ytdYear + '</div>' +
+          (ytdPartial > 0
+            ? '<div style="font-size:11px;color:var(--text-muted);margin-top:7px;padding-top:7px;border-top:1px solid var(--border)">' +
+                '<strong style="color:var(--text-dim);font-size:13px">' + ytdPartial + '</strong>' +
+                ' partial round' + (ytdPartial !== 1 ? 's' : '') + ' (9&ndash;17 holes), counted separately' +
+              '</div>'
+            : '') +
+        '</div>';
+
       document.getElementById('statGrid').innerHTML =
+        ytdTile +
         '<div class="stat-box"><div class="stat-value">' + myRounds + '</div><div class="stat-label">Rounds</div></div>' +
         '<div class="stat-box"><div class="stat-value">' + myBestStr + '</div><div class="stat-label">Best (to par)</div></div>' +
         '<div class="stat-box"><div class="stat-value">' + myAvg + '</div><div class="stat-label">Avg (to par)</div></div>' +
