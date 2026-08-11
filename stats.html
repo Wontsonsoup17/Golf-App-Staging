@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#132017}</style>
 <script>
-(function(){var v='201';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='203';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Leaderboard - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=201">
+<link rel="stylesheet" href="shared.css?v=203">
 <style>
 /* ===== LEAGUE TABLE ===== */
 .lb-table { width: 100%; border-collapse: collapse; }
@@ -223,9 +223,9 @@ body { display: flex; flex-direction: column; }
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=201"></script>
-<script src="shared.js?v=201"></script>
-<script src="firebase-sync.js?v=201"></script>
+<script src="firebase-config.js?v=203"></script>
+<script src="shared.js?v=203"></script>
+<script src="firebase-sync.js?v=203"></script>
 <script>
 requireAuth(function(user) {
   renderBottomNav('stats');
@@ -233,15 +233,29 @@ requireAuth(function(user) {
   renderActiveRoundBanner();
   renderBroadcastBanner();
 
+  // Same failure mode as history.html: renderStats() throwing inside .then()
+  // fell into .catch(), which re-ran the same render on the same data and threw
+  // again, leaving "Loading stats..." up permanently.
+  var _statsRendered = false;
+  function safeRenderStats(rounds) {
+    if (_statsRendered) return;
+    _statsRendered = true;
+    try { renderStats(rounds); }
+    catch (e) { renderLoadFailure('leaderboardSection', e); }
+  }
+
   fbLoadRounds(user.uid).then(function(rounds) {
-    renderStats(rounds);
-  }).catch(function() {
-    renderStats(loadRounds());
+    safeRenderStats(rounds);
+  }).catch(function(err) {
+    console.warn('[GolfTracker] cloud round load failed, using local cache:', err);
+    safeRenderStats(loadRounds());
   });
 
   function renderStats(rounds) {
     if (!rounds.length) {
-      document.getElementById('statGrid').innerHTML = '';
+      // NOTE: this page has no #statGrid element -- the old code dereferenced
+      // it here and threw for every account with zero rounds, which is why
+      // brand-new signups also saw an endless spinner on the Board tab.
       document.getElementById('leaderboardSection').innerHTML =
         '<div class="empty-state"><div class="icon"><img src="images/ic-board.png" class="empty-logo" alt="Board"></div><p>Play some rounds to see your stats!<br><a href="index.html">Get started</a></p></div>';
       return;
@@ -417,25 +431,81 @@ requireAuth(function(user) {
       });
     });
 
-    // ── Monthly Champion (last 30 days) ──────────────────────
-    var now = new Date();
-    var thirtyDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
-    var monthlyPs = {};
+    // ── Calendar-month scoping ────────────────────────────────
+    // This replaced a rolling 30-day window that was labelled "This Month" but
+    // never actually reset on the 1st.
+    //
+    // Rounds store `date` as a 'YYYY-MM-DD' string. We compare the 'YYYY-MM'
+    // prefix as a STRING rather than building a Date: `new Date('2026-08-01')`
+    // parses as UTC midnight, which in any negative UTC offset renders as
+    // July 31 locally and would silently push first-of-the-month rounds into
+    // the previous month.
+    var MONTH_NAMES = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
+
+    function monthKeyOf(r) {
+      return (typeof r.date === 'string' && r.date.length >= 7) ? r.date.slice(0, 7) : '';
+    }
+    function monthKey(y, m) {
+      return y + '-' + (m < 9 ? '0' : '') + (m + 1);
+    }
+    function monthLabel(y, m) { return MONTH_NAMES[m] + ' ' + y; }
+    function currentMonthKey() {
+      var d = new Date();
+      return monthKey(d.getFullYear(), d.getMonth());
+    }
+
+    // Earliest month that has any round — bounds the back arrow.
+    var monthsSeen = {};
     sortedRounds.forEach(function(r) {
-      if (!r.date) return;
-      var rDate = new Date(r.date);
-      if (rDate < thirtyDaysAgo) return;
-      r.players.forEach(function(p) {
-        if (!validEntry(r, p)) return;
-        var pp = parPlayed(r, p);
-        var total = r.scores[p].reduce(function(a, b) { return a + b; }, 0);
-        if (!monthlyPs[p]) monthlyPs[p] = { totalScore: 0, totalPar: 0, totalProjToPar: 0, rounds: 0 };
-        monthlyPs[p].totalScore += total;
-        monthlyPs[p].totalPar += pp;
-        monthlyPs[p].totalProjToPar += projToPar(r, p);
-        monthlyPs[p].rounds++;
-      });
+      var k = monthKeyOf(r);
+      if (k) monthsSeen[k] = true;
     });
+    var earliestMonthKey = Object.keys(monthsSeen).sort()[0] || null;
+
+    var _initNow = new Date();
+    var viewY = _initNow.getFullYear();
+    var viewM = _initNow.getMonth();   // 0-indexed
+
+    // Month-scoped standings. Wins are counted within the month too, so a
+    // player's W column reflects that month rather than their career.
+    function buildMonthStats(y, m) {
+      var key = monthKey(y, m);
+      var monthRounds = sortedRounds.filter(function(r) { return monthKeyOf(r) === key; });
+      var mps = {};
+      monthRounds.forEach(function(r) {
+        r.players.forEach(function(p) {
+          if (!validEntry(r, p)) return;
+          var pp = parPlayed(r, p);
+          var total = r.scores[p].reduce(function(a, b) { return a + b; }, 0);
+          var tp = total - pp;
+          if (!mps[p]) mps[p] = { rounds: 0, totalScore: 0, totalPar: 0, totalProjToPar: 0, wins: 0, bestToPar: Infinity };
+          mps[p].rounds++;
+          mps[p].totalScore += total;
+          mps[p].totalPar += pp;
+          mps[p].totalProjToPar += projToPar(r, p);
+          if (tp < mps[p].bestToPar) mps[p].bestToPar = tp;
+        });
+      });
+      monthRounds.forEach(function(r) {
+        var minTP = Infinity, winners = [];
+        r.players.forEach(function(p) {
+          if (!validEntry(r, p)) return;
+          var tp = toPar(r, p);
+          if (tp < minTP) { minTP = tp; winners = [p]; }
+          else if (tp === minTP) winners.push(p);
+        });
+        winners.forEach(function(w) { if (mps[w]) mps[w].wins++; });
+      });
+      return { key: key, stats: mps, roundCount: monthRounds.length };
+    }
+
+    window._lbShiftMonth = function(delta) {
+      var d = new Date(viewY, viewM + delta, 1);   // handles Dec->Jan rollover
+      viewY = d.getFullYear();
+      viewM = d.getMonth();
+      renderLb();
+    };
 
     // ── Par Type Specialists ──────────────────────────────────
     // par3Stats[player] = { strokes, par, holes }
@@ -485,9 +555,12 @@ requireAuth(function(user) {
     };
 
     function renderLb() {
-      // Build sorted player list
-      var players = Object.keys(ps).map(function(name) {
-        var d = ps[name];
+      // Rankings are scoped to the month being viewed. The all-time `ps` map is
+      // still used for accolade badges, so nobody loses what they've earned.
+      var month = buildMonthStats(viewY, viewM);
+      var mps = month.stats;
+      var players = Object.keys(mps).map(function(name) {
+        var d = mps[name];
         var avg = d.totalProjToPar / d.rounds;
         return { name: name, rounds: d.rounds, wins: d.wins, avg: avg, best: d.bestToPar };
       });
@@ -539,7 +612,7 @@ requireAuth(function(user) {
           ? '<span class="admin-name">' + p.name + '</span>' + adminBadge(p.name, 12)
           : p.name;
 
-        return '<tr class="lb-tr">' +
+        return '<tr class="lb-tr"' + (rank === 1 ? ' style="background:rgba(201,162,75,0.07)"' : '') + '>' +
           '<td class="lb-td">' +
             '<div style="display:flex;align-items:center;gap:8px">' +
               '<div class="lb-rank ' + rankClass + '" style="flex-shrink:0">' + rank + '</div>' +
@@ -576,7 +649,7 @@ requireAuth(function(user) {
 
       var lbHtml =
         '<div class="leaderboard">' +
-          '<h3>Player Leaderboard <span style="font-size:10px;color:var(--text-muted);font-weight:500;margin-left:4px">tap column to sort</span></h3>' +
+          '<h3>' + monthLabel(viewY, viewM) + ' Standings <span style="font-size:10px;color:var(--text-muted);font-weight:500;margin-left:4px">tap column to sort</span></h3>' +
           '<div style="overflow-x:auto;margin:0 -16px;padding:0 16px">' +
             '<table class="lb-table"><thead><tr class="lb-thead-row">' + thHtml + '</tr></thead>' +
             '<tbody>' + rowsHtml + '</tbody></table>' +
@@ -593,7 +666,7 @@ requireAuth(function(user) {
 
       var champHtml = '';
       if (champCourseIds.length) {
-        champHtml += '<div class="section-title" style="margin-top:20px">&#127942; Course Champions</div>';
+        champHtml += '<div class="section-title" style="margin-top:20px">&#127942; Course Records <span style="font-size:10px;color:var(--text-muted);font-weight:500">all-time</span></div>';
         champHtml += '<div class="champ-grid">';
         champCourseIds.forEach(function(cid) {
           var champ = courseChamps[cid];
@@ -627,7 +700,7 @@ requireAuth(function(user) {
       var parSpecHtml = '';
       var parTypes = [3, 4, 5].filter(function(pt) { return !!parSpecialists[pt]; });
       if (parTypes.length >= 2) {
-        parSpecHtml += '<div class="section-title" style="margin-top:20px">&#127992; Par Specialists</div>';
+        parSpecHtml += '<div class="section-title" style="margin-top:20px">&#127992; Par Specialists <span style="font-size:10px;color:var(--text-muted);font-weight:500">all-time</span></div>';
         parSpecHtml += '<div class="par-spec-grid">';
         [3, 4, 5].forEach(function(pt) {
           if (!parSpecialists[pt]) {
@@ -649,12 +722,14 @@ requireAuth(function(user) {
         parSpecHtml += '</div>';
       }
 
-      // Podium — top 3 by monthly avg (last 30 days), only if 3+ players this month
+      // Podium — top 3 for the month being viewed (`players` is already
+      // month-scoped). Ties break on wins, then rounds played.
       var podiumHtml = '';
-      var byMonthlyAvg = Object.keys(monthlyPs).map(function(p) {
-        var avg = monthlyPs[p].totalProjToPar / monthlyPs[p].rounds;
-        return { name: p, avg: avg, rounds: monthlyPs[p].rounds };
-      }).sort(function(a, b) { return a.avg - b.avg; });
+      var byMonthlyAvg = players.slice().sort(function(a, b) {
+        if (a.avg !== b.avg) return a.avg - b.avg;
+        if (a.wins !== b.wins) return b.wins - a.wins;
+        return b.rounds - a.rounds;
+      });
 
       if (byMonthlyAvg.length >= 3) {
         function podiumSlot(p, pos) {
@@ -673,7 +748,7 @@ requireAuth(function(user) {
         }
         // Order: 2nd left, 1st center, 3rd right
         podiumHtml =
-          '<div class="section-title" style="margin-bottom:16px">&#127881; This Month\'s Top 3</div>' +
+          '<div class="section-title" style="margin-bottom:16px">&#127881; Top 3 &mdash; ' + monthLabel(viewY, viewM) + '</div>' +
           '<div class="podium-wrap">' +
             podiumSlot(byMonthlyAvg[1], 2) +
             podiumSlot(byMonthlyAvg[0], 1) +
@@ -732,9 +807,82 @@ requireAuth(function(user) {
         }
       }
 
-      document.getElementById('leaderboardSection').innerHTML = players.length
-        ? podiumHtml + lbHtml + champHtml + parSpecHtml
-        : '<p style="color:var(--text-muted);font-size:13px;padding:12px 0">Complete a round with 9+ holes.</p>';
+      // ── Month header with navigation ────────────────────────
+      var curKey = monthKey(viewY, viewM);
+      var nowKey = currentMonthKey();
+      var isCurrentMonth = (curKey === nowKey);
+      var canGoBack = earliestMonthKey ? (curKey > earliestMonthKey) : false;
+      var canGoFwd  = (curKey < nowKey);
+
+      function navBtn(delta, glyph, enabled) {
+        return '<button ' + (enabled ? 'onclick="_lbShiftMonth(' + delta + ')"' : 'disabled') +
+          ' style="background:none;border:1px solid var(--border);border-radius:8px;width:36px;height:36px;flex:0 0 auto;' +
+          'color:' + (enabled ? 'var(--gold)' : 'rgba(255,255,255,0.14)') + ';font-size:17px;line-height:1;' +
+          'cursor:' + (enabled ? 'pointer' : 'default') + ';-webkit-tap-highlight-color:transparent">' + glyph + '</button>';
+      }
+
+      var monthHeaderHtml =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 16px">' +
+          navBtn(-1, '&#8249;', canGoBack) +
+          '<div style="text-align:center;flex:1 1 auto;min-width:0">' +
+            '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:20px;font-weight:700;color:var(--text-bright);line-height:1.15">' +
+              monthLabel(viewY, viewM) +
+            '</div>' +
+            '<div style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);margin-top:3px">' +
+              (isCurrentMonth ? 'This month' : 'Final') + ' &bull; ' +
+              month.roundCount + ' round' + (month.roundCount !== 1 ? 's' : '') +
+            '</div>' +
+          '</div>' +
+          navBtn(1, '&#8250;', canGoFwd) +
+        '</div>';
+
+      // ── Current leader banner ───────────────────────────────
+      var leaderHtml = '';
+      if (byMonthlyAvg.length) {
+        var L = byMonthlyAvg[0];
+        var tied = byMonthlyAvg.filter(function(x) { return x.avg === L.avg; });
+        var lAvg = (L.avg >= 0 ? '+' : '') + L.avg.toFixed(1);
+        var lNames = tied.length > 1
+          ? tied.map(function(x) { return x.name; }).join(' & ')
+          : (isAdmin(L.name) ? '<span class="admin-name">' + L.name + '</span>' + adminBadge(L.name, 13) : L.name);
+        // Accolades are all-time and travel with the player.
+        var lBadges = (badgesMap[L.name] || []).map(function(b) {
+          return '<span class="ach-badge" title="' + b.title + '">' + b.icon + '</span>';
+        }).join('');
+        leaderHtml =
+          '<div style="background:linear-gradient(135deg,rgba(201,162,75,0.16),rgba(201,162,75,0.03));' +
+               'border:1px solid rgba(201,162,75,0.34);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:18px">' +
+            '<div style="font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:7px">' +
+              '&#128081; ' + (isCurrentMonth ? 'Currently winning' : 'Winner') +
+              (tied.length > 1 ? ' &bull; ' + tied.length + '-way tie' : '') +
+            '</div>' +
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+              '<div style="font-size:20px;font-weight:800;color:var(--text-bright);line-height:1.15">' + lNames + '</div>' +
+              '<div style="font-size:23px;font-weight:900;line-height:1;color:' +
+                (L.avg < 0 ? 'var(--green-accent)' : L.avg <= 5 ? 'var(--bogey)' : 'var(--red)') + '">' + lAvg + '</div>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);margin-top:5px">' +
+              L.rounds + ' round' + (L.rounds !== 1 ? 's' : '') + ' &bull; ' +
+              L.wins + ' win' + (L.wins !== 1 ? 's' : '') + ' &bull; avg to par' +
+            '</div>' +
+            (lBadges ? '<div class="badge-strip" style="margin-top:9px">' + lBadges + '</div>' : '') +
+          '</div>';
+      }
+
+      var emptyMonthHtml =
+        '<div class="empty-state" style="padding:24px 0">' +
+          '<div class="icon"><img src="images/ic-board.png" class="empty-logo" alt="Board"></div>' +
+          '<p>No rounds played in ' + monthLabel(viewY, viewM) + ' yet.' +
+          (canGoBack ? '<br>Use &#8249; to see a previous month.' : '<br><a href="index.html">Start a round</a> to open the month.') +
+          '</p>' +
+        '</div>';
+
+      // All-time sections (records + specialists) stay visible in every month,
+      // including empty ones.
+      document.getElementById('leaderboardSection').innerHTML =
+        monthHeaderHtml +
+        (players.length ? leaderHtml + podiumHtml + lbHtml : emptyMonthHtml) +
+        champHtml + parSpecHtml;
 
       // Load podium photos after DOM is set
       if (byMonthlyAvg.length >= 3 && typeof window._loadPodiumAvatars === 'function') {

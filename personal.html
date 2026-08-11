@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#132017}</style>
 <script>
-(function(){var v='201';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='203';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>My Stats - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=201">
+<link rel="stylesheet" href="shared.css?v=203">
 </head>
 <body>
 <div class="user-header" id="userHeader"></div>
@@ -39,9 +39,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=201"></script>
-<script src="shared.js?v=201"></script>
-<script src="firebase-sync.js?v=201"></script>
+<script src="firebase-config.js?v=203"></script>
+<script src="shared.js?v=203"></script>
+<script src="firebase-sync.js?v=203"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('personal');
@@ -52,10 +52,25 @@
     var displayName = user.displayName || 'You';
     document.getElementById('playerName').textContent = displayName + "'s personal stats";
 
+    // Every render goes through here. The synchronous localStorage pre-render
+    // below used to run bare: if the cached data was malformed it threw before
+    // the Firebase request was even issued, killing the rest of this callback
+    // and leaving the spinner up forever.
+    var _personalRenderedOk = false;
+    function safeRenderPersonal(rounds, who) {
+      try {
+        renderPersonalStats(rounds, who);
+        _personalRenderedOk = true;
+      } catch (e) {
+        renderLoadFailure('courseStatsSection', e);
+      }
+    }
+
     // Show localStorage data immediately (instant render), then update from Firebase
-    var localRounds = loadRounds();
+    var localRounds = [];
+    try { localRounds = loadRounds(); } catch (e) { localRounds = []; }
     if (localRounds.length) {
-      renderPersonalStats(localRounds, displayName);
+      safeRenderPersonal(localRounds, displayName);
     }
 
     // Wait for Firebase SDK to be fully loaded, then fetch rounds
@@ -65,15 +80,16 @@
       if (fbRounds.length) {
         // Sync localStorage to match Firebase
         saveRounds(fbRounds);
-        renderPersonalStats(fbRounds, displayName);
+        safeRenderPersonal(fbRounds, displayName);
       } else if (!localRounds.length) {
         // Both empty — show empty state
-        renderPersonalStats([], displayName);
+        safeRenderPersonal([], displayName);
       }
-    }).catch(function() {
+    }).catch(function(err) {
       // Firebase failed — localStorage data already shown above
-      if (!localRounds.length) {
-        renderPersonalStats([], displayName);
+      console.warn('[GolfTracker] cloud round load failed, using local cache:', err);
+      if (!_personalRenderedOk && !localRounds.length) {
+        safeRenderPersonal([], displayName);
       }
     });
 

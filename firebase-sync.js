@@ -8,7 +8,9 @@ function fbLoadRounds(uid) {
   return db.ref('users/' + uid + '/rounds').once('value').then(snap => {
     const data = snap.val();
     if (!data) return [];
-    return Object.keys(data).map(key => ({ ...data[key], id: key }));
+    // normalizeRound (shared.js) repairs malformed / legacy records so no
+    // render path can ever be handed a round without a `scores` map.
+    return Object.keys(data).map(key => normalizeRound(data[key], key));
   });
 }
 

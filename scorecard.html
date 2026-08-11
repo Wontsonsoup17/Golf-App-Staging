@@ -3,7 +3,7 @@
 <head>
 <style>html,body{background:#132017}</style>
 <script>
-(function(){var v='201';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='203';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Live Round - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=201">
+<link rel="stylesheet" href="shared.css?v=203">
 <style>
 /* ===== SCRAMBLE MODE ===== */
 .scramble-lobby { padding: 0; }
@@ -81,9 +81,9 @@
 <nav class="bottom-nav" id="bottomNav"></nav>
 <div style="text-align:center;font-size:9px;color:#333;padding:4px;opacity:0.5">v110</div>
 
-<script src="firebase-config.js?v=201"></script>
-<script src="shared.js?v=201"></script>
-<script src="firebase-sync.js?v=201"></script>
+<script src="firebase-config.js?v=203"></script>
+<script src="shared.js?v=203"></script>
+<script src="firebase-sync.js?v=203"></script>
 <script>
   // ==================== SCORE EFFECTS (emoji burst) ====================
   // Defined at script scope so both solo and group modes can access them
@@ -1006,7 +1006,14 @@
     });
 
     function startGroupListener() {
-    var roundEndedHandled = false;
+    // NOTE: this was `var roundEndedHandled = false;` -- function-scoped to
+    // startGroupListener(). The four places that set it to true to suppress a
+    // duplicate save (endRoundForAll, finishGroupRoundAction, scrambleEndForAll,
+    // handleScrambleData) are SIBLING functions, so their bare assignments
+    // created an implicit global and never touched this variable. The guard
+    // never fired and the host saved every round twice. Sharing one explicitly
+    // window-scoped flag makes all five references agree.
+    window.roundEndedHandled = false;
     var prevOverridesJson = null;
     // Listen for real-time updates
     unsubscribe = listenToGroupRound(groupCode, function(data) {
@@ -1539,7 +1546,55 @@
       if (!course) return;
       var teams = data.meta.teams || {};
       var teamScores = data.teamScores || {};
-      var teamHole = data.teamHole || {};
+
+      // Build a real per-player shape. The old code wrote `scores: {}` and
+      // `tracking: {}` -- and Firebase RTDB DROPS empty objects, so the record
+      // came back from the cloud with no `scores` key at all. History, Board and
+      // Personal all dereference r.scores[playerName], so a single saved
+      // scramble round permanently broke all three tabs for that account.
+      // Each team member is credited with their team's card.
+      function _teamArr(o) {
+        var a = new Array(18).fill(0);
+        if (o && typeof o === 'object') {
+          for (var i = 0; i < 18; i++) a[i] = typeof o[i] === 'number' ? o[i] : 0;
+        }
+        return a;
+      }
+
+      var uidToName = {};
+      var players = [];
+      Object.keys(data.players || {}).forEach(function(u) {
+        var nm = (data.players[u] && data.players[u].name) || u;
+        uidToName[u] = nm;
+        players.push(nm);
+      });
+
+      var scores = {};
+      ['teamA', 'teamB'].forEach(function(tk) {
+        var t = teams[tk] || {};
+        var arr = _teamArr(teamScores[tk]);
+        (t.members || []).forEach(function(u) {
+          var nm = uidToName[u];
+          if (nm) scores[nm] = arr.slice();
+        });
+      });
+      // Anyone not assigned to a team still gets a valid (empty) card.
+      players.forEach(function(nm) {
+        if (!scores[nm]) scores[nm] = new Array(18).fill(0);
+      });
+
+      var tracking = {};
+      var holesCompleted = {};
+      players.forEach(function(nm) {
+        tracking[nm] = createPlayerTracking();
+        holesCompleted[nm] = scores[nm].filter(function(s) { return s > 0; }).length;
+      });
+
+      var myName = uidToName[user.uid];
+      var myHolesPlayed = (myName && scores[myName])
+        ? scores[myName].filter(function(s) { return s > 0; }).length
+        : 0;
+
       var round = {
         id: Date.now().toString(),
         courseId: course.id,
@@ -1550,14 +1605,20 @@
         date: data.meta.date,
         gameType: 'scramble',
         groupCode: groupCode,
-        players: Object.keys(data.players || {}).map(function(u) { return data.players[u].name; }),
-        scores: {}, // empty — scramble uses teamScores
-        tracking: {},
+        players: players,
+        scores: scores,
+        tracking: tracking,
         holePars: course.holes.map(function(h) { return h.par; }),
+        holesCompleted: holesCompleted,
+        incomplete: myHolesPlayed < 18,
         teamScores: JSON.parse(JSON.stringify(teamScores)),
         teams: JSON.parse(JSON.stringify(teams))
       };
-      fbSaveRound(user.uid, round).catch(function() {});
+
+      // Resolve the id against any existing local copy BEFORE writing to the
+      // cloud. The old order called fbSaveRound() first with a fresh Date.now()
+      // id, so the dedupe below never protected Firebase and every re-save
+      // created another duplicate cloud record.
       var rounds = loadRounds();
       var exists = false;
       for (var i = rounds.length - 1; i >= 0; i--) {
@@ -1570,6 +1631,7 @@
       }
       if (!exists) rounds.push(round);
       saveRounds(rounds);
+      fbSaveRound(user.uid, round).catch(function() {});
     }
 
     // Store latest scramble data for interaction handlers

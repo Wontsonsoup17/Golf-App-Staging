@@ -1,7 +1,7 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed so users always
 // get fresh files. The popup is handled separately via checkUpdatePopup.
-var APP_VERSION = '201';
+var APP_VERSION = '203';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -320,6 +320,38 @@ const COURSES = [
   },
 
   // ==================== OTHER COURSES ====================
+  {
+    id: 'van-cortlandt', name: 'Van Cortlandt Park',
+    address: '115 Van Cortlandt Park S, Bronx, NY 10471', phone: '(718) 543-4595', par: 70,
+    group: 'other',
+    link: 'https://www.golfnyc.com/van-cortlandt-scorecard/',
+    overview: '',
+    tees: {
+      black: { label: 'Black', yards: 6002, rating: 69.8, slope: 120 },
+      blue:  { label: 'Blue',  yards: 5558, rating: 67.3, slope: 118 },
+      red:   { label: 'Red',   yards: 4799, rating: 68.9, slope: 113 }
+    },
+    holes: [
+      { num:1,  par:4, black:370, blue:354, red:329, hcp:11 },
+      { num:2,  par:5, black:619, blue:559, red:454, hcp:1  },
+      { num:3,  par:3, black:172, blue:156, red:134, hcp:17 },
+      { num:4,  par:4, black:364, blue:350, red:320, hcp:5  },
+      { num:5,  par:4, black:345, blue:325, red:285, hcp:9  },
+      { num:6,  par:4, black:295, blue:279, red:236, hcp:13 },
+      { num:7,  par:3, black:222, blue:204, red:178, hcp:3  },
+      { num:8,  par:4, black:318, blue:304, red:257, hcp:15 },
+      { num:9,  par:4, black:391, blue:375, red:302, hcp:7  },
+      { num:10, par:5, black:475, blue:452, red:428, hcp:6  },
+      { num:11, par:3, black:174, blue:153, red:125, hcp:18 },
+      { num:12, par:5, black:572, blue:550, red:453, hcp:2  },
+      { num:13, par:3, black:172, blue:156, red:141, hcp:12 },
+      { num:14, par:4, black:391, blue:353, red:282, hcp:4  },
+      { num:15, par:4, black:302, blue:254, red:207, hcp:14 },
+      { num:16, par:4, black:292, blue:282, red:264, hcp:16 },
+      { num:17, par:3, black:190, blue:172, red:132, hcp:8  },
+      { num:18, par:4, black:338, blue:280, red:272, hcp:10 }
+    ]
+  },
   {
     id: 'punta-borinquen', name: 'Punta Borinquen',
     address: 'Aguadilla, Puerto Rico', phone: '(939) 224-9315', par: 72,
@@ -798,22 +830,192 @@ function playerAvatarByName(name, nameToUid, size) {
   return playerAvatarHtml(nameToUid[name], size);
 }
 
+// ==================== ROUND NORMALIZATION ====================
+// Saved rounds reach the render code from two directions (Firebase and
+// localStorage) and in several historical shapes. Three things routinely break
+// the naive shape the render code assumes:
+//   1. Firebase RTDB DROPS empty objects. `scores: {}` (written by the old
+//      scramble save path) comes back with no `scores` key at all, so
+//      `r.scores[p]` throws before any guard downstream can help.
+//   2. Firebase stores arrays as objects and only converts back when the keys
+//      are dense and zero-based, so an array can return as {0:4,1:5,...}.
+//   3. Legacy rounds predate `incomplete`, `holePars`, `holesCompleted` and
+//      `penaltyLocations`.
+// Rather than guard at ~40 call sites, every round is forced through this
+// normalizer on the way in. Afterwards, consumers can rely on:
+//   players     -> array of non-empty strings
+//   scores[p]   -> 18-length number array, present for EVERY player
+//   tracking[p] -> full tracking object, present for EVERY player
+//   holePars    -> 18-length number array
+//   par         -> positive number
+//   incomplete  -> boolean (never undefined)
+
+function _normNumArray18(v) {
+  var out = new Array(18).fill(0);
+  if (v && typeof v === 'object') {
+    for (var i = 0; i < 18; i++) out[i] = typeof v[i] === 'number' ? v[i] : 0;
+  }
+  return out;
+}
+
+function _normBoolArray18(v) {
+  var out = new Array(18).fill(false);
+  if (v && typeof v === 'object') {
+    for (var i = 0; i < 18; i++) out[i] = !!v[i];
+  }
+  return out;
+}
+
+function _normLocArray18(v) {
+  var out = new Array(18).fill(null);
+  if (v && typeof v === 'object') {
+    for (var i = 0; i < 18; i++) {
+      var e = v[i];
+      if (Array.isArray(e) && e.length) out[i] = e.slice();
+    }
+  }
+  return out;
+}
+
+function _normStringArray(v) {
+  var arr = [];
+  if (Array.isArray(v)) arr = v;
+  else if (v && typeof v === 'object') arr = Object.keys(v).map(function(k) { return v[k]; });
+  return arr.filter(function(s) { return typeof s === 'string' && s.length > 0; });
+}
+
+function _normTrackingObj(t) {
+  t = (t && typeof t === 'object') ? t : {};
+  return {
+    putts: _normNumArray18(t.putts),
+    fairway: _normBoolArray18(t.fairway),
+    gir: _normBoolArray18(t.gir),
+    mulligans: _normNumArray18(t.mulligans),
+    mulliganLocations: _normLocArray18(t.mulliganLocations),
+    penalties: _normNumArray18(t.penalties),
+    penaltyLocations: _normLocArray18(t.penaltyLocations)
+  };
+}
+
+function normalizeRound(raw, id) {
+  var r = (raw && typeof raw === 'object') ? Object.assign({}, raw) : {};
+  if (id) r.id = id;
+  if (!r.id) r.id = String(Date.now());
+
+  r.gameType = (r.gameType === 'scramble') ? 'scramble' : 'standard';
+  r.players = _normStringArray(r.players);
+
+  // holePars -- fall back to the course layout, then to a flat par 4.
+  var hp = _normNumArray18(r.holePars);
+  if (!hp.some(function(v) { return v > 0; })) {
+    var c = (typeof getCourse === 'function') ? getCourse(r.courseId) : null;
+    hp = (c && c.holes) ? c.holes.map(function(h) { return h.par; }) : new Array(18).fill(4);
+  }
+  r.holePars = hp;
+
+  if (typeof r.par !== 'number' || !(r.par > 0)) {
+    r.par = hp.reduce(function(a, b) { return a + b; }, 0);
+  }
+
+  // Scramble team scores are kept for display only -- the stats paths read
+  // scores[playerName], which is filled in below.
+  if (r.teamScores && typeof r.teamScores === 'object') {
+    var ts = {};
+    Object.keys(r.teamScores).forEach(function(k) { ts[k] = _normNumArray18(r.teamScores[k]); });
+    r.teamScores = ts;
+  } else {
+    r.teamScores = null;
+  }
+
+  // scores -- guaranteed present for every player.
+  var rawScores = (r.scores && typeof r.scores === 'object') ? r.scores : {};
+  var scores = {};
+  r.players.forEach(function(p) { scores[p] = _normNumArray18(rawScores[p]); });
+  // Keep orphaned score rows (e.g. a player renamed after the round was saved)
+  // so a scorecard is never silently dropped.
+  Object.keys(rawScores).forEach(function(p) {
+    if (!scores[p]) {
+      scores[p] = _normNumArray18(rawScores[p]);
+      if (r.players.indexOf(p) === -1) r.players.push(p);
+    }
+  });
+  r.scores = scores;
+
+  // tracking -- guaranteed present for every player.
+  var rawTracking = (r.tracking && typeof r.tracking === 'object') ? r.tracking : {};
+  var tracking = {};
+  r.players.forEach(function(p) { tracking[p] = _normTrackingObj(rawTracking[p]); });
+  r.tracking = tracking;
+
+  // holesCompleted -- recompute anything missing.
+  var rawHC = (r.holesCompleted && typeof r.holesCompleted === 'object') ? r.holesCompleted : {};
+  var hc = {};
+  r.players.forEach(function(p) {
+    hc[p] = (typeof rawHC[p] === 'number')
+      ? rawHC[p]
+      : r.scores[p].filter(function(s) { return s > 0; }).length;
+  });
+  r.holesCompleted = hc;
+
+  // incomplete -- must always be a boolean so callers never fall through to a
+  // scores lookup on a record that may not have one.
+  if (typeof r.incomplete !== 'boolean') {
+    r.incomplete = r.players.some(function(p) {
+      return r.scores[p].filter(function(s) { return s > 0; }).length < 18;
+    });
+  }
+
+  if (typeof r.courseName !== 'string' || !r.courseName) {
+    var c2 = (typeof getCourse === 'function') ? getCourse(r.courseId) : null;
+    r.courseName = (c2 && c2.name) || r.courseId || 'Unknown Course';
+  }
+  if (typeof r.teeLabel !== 'string') r.teeLabel = (typeof r.tee === 'string' ? r.tee : '');
+  if (typeof r.date !== 'string' || !r.date) r.date = '1970-01-01';
+
+  return r;
+}
+
+// ==================== LOAD FAILURE UI ====================
+// A render that throws must never leave a spinner on screen. Callers wrap their
+// render in try/catch and hand the error here.
+function renderLoadFailure(containerId, err) {
+  try { console.error('[GolfTracker] render failed:', err); } catch(e) {}
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  var msg = String((err && err.message) || err || 'Unknown error').replace(/[<>&]/g, '');
+  el.innerHTML =
+    '<div class="empty-state">' +
+      '<div class="icon" style="font-size:40px">&#9888;&#65039;</div>' +
+      '<p>Couldn\'t load this page.<br>' +
+      '<span style="font-size:11px;color:var(--text-muted);font-family:monospace;word-break:break-word">' + msg + '</span></p>' +
+      '<button class="btn-outline" style="margin-top:14px" onclick="window.location.reload()">Retry</button>' +
+    '</div>';
+}
+
 // ==================== STORAGE ====================
 const STORAGE_KEY = 'westchester-golf-v2';
 
 function loadRounds() {
+  var raw = [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved).rounds || [];
-    // migrate from v1
-    const old = localStorage.getItem('westchester-golf-tracker');
-    if (old) {
-      const parsed = JSON.parse(old);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ rounds: parsed.rounds || [] }));
-      return parsed.rounds || [];
+    if (saved) {
+      raw = JSON.parse(saved).rounds || [];
+    } else {
+      // migrate from v1
+      const old = localStorage.getItem('westchester-golf-tracker');
+      if (old) {
+        const parsed = JSON.parse(old);
+        raw = parsed.rounds || [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ rounds: raw }));
+      }
     }
-  } catch(e) {}
-  return [];
+  } catch(e) { raw = []; }
+  if (!Array.isArray(raw)) raw = [];
+  // Normalize on the way out so a poisoned cached record can never crash a
+  // synchronous render (personal.html renders from localStorage before it ever
+  // talks to Firebase).
+  return raw.map(function(r) { return normalizeRound(r); });
 }
 
 function saveRounds(rounds) {
@@ -1615,15 +1817,18 @@ window.proceedNuke = function() {
     _firebaseLoadPromise.then(function() {
       if (!_firebaseReady || !_firebaseDB) return;
 
-      // Write our version so the latest deployer always sets the truth
-      _firebaseDB.ref('appVersion').set(parseInt(APP_VERSION) || 0);
-
-      // Read the latest version
+      // Monotonic version truth. The old code unconditionally wrote OUR version
+      // BEFORE reading, so a phone still running an old build clobbered the
+      // recorded latest version with its own lower number, read that number
+      // back, concluded it was current, and never showed the banner -- while
+      // also hiding the update from every other device. Read first; only ever
+      // publish upward, never downward.
       _firebaseDB.ref('appVersion').once('value').then(function(snap) {
-        var latest = snap.val();
-        if (!latest) return;
-        var local = parseInt(APP_VERSION) || 0;
-        if (local < latest) {
+        var latest = parseInt(snap.val(), 10) || 0;
+        var local = parseInt(APP_VERSION, 10) || 0;
+        if (local > latest) {
+          _firebaseDB.ref('appVersion').set(local).catch(function() {});
+        } else if (local < latest) {
           showUpdateBanner();
         }
       });
