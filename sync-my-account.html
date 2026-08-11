@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copy my account to TEST (dev only)</title>
+<style>html,body{background:#132017}</style>
+<script>
+/* Storage namespacing — must run before any other script on the page.
+   Live and staging are BOTH served from wontsonsoup17.github.io, and browsers
+   scope localStorage to the ORIGIN, not the path. Without this, the dev site
+   shares the real site's session, cached rounds, avatars and version flags:
+   signing out of one signs out the other, and a localStorage.clear() on the dev
+   site wipes real data.
+
+   The prefix is decided by path/host, NOT by the firebase IS_PLAYGROUND rule,
+   because the HTML files are identical on both deployments (only
+   firebase-config.js differs). On LIVE the prefix is '' and this whole shim
+   no-ops, so live behaviour is byte-for-byte unchanged and no user is signed
+   out. */
+(function () {
+  var h = location.hostname, p = location.pathname || '';
+  var pre = (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0') ? 'dev-'
+          : (p.indexOf('/Golf-App-Staging') === 0) ? 'stg-'
+          : '';
+  if (!pre) return;                         // live — leave everything alone
+  var real;
+  try { real = window.localStorage; if (!real) return; } catch (e) { return; }
+  function mine() {
+    var out = [];
+    for (var i = 0; i < real.length; i++) {
+      var k = real.key(i);
+      if (k && k.indexOf(pre) === 0) out.push(k);
+    }
+    return out;
+  }
+  var shim = {
+    getItem:    function (k) { return real.getItem(pre + k); },
+    setItem:    function (k, v) { return real.setItem(pre + k, v); },
+    removeItem: function (k) { return real.removeItem(pre + k); },
+    // Only ever clears this build's own keys — never the live site's.
+    clear:      function () { mine().forEach(function (k) { real.removeItem(k); }); },
+    key:        function (i) { var a = mine(); return i < a.length ? a[i].slice(pre.length) : null; },
+    get length() { return mine().length; }
+  };
+  try {
+    Object.defineProperty(window, 'localStorage',
+      { value: shim, configurable: true, writable: true });
+  } catch (e) { /* if it fails we simply keep shared storage — today's behaviour */ }
+})();
+</script>
+<link rel="stylesheet" href="shared.css">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#f3efe2;padding:20px;max-width:640px;margin:0 auto}
+  .warn{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.3);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:16px;line-height:1.5}
+  .ok{background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.28);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:16px;line-height:1.5}
+  input{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#f3efe2;font-size:16px;margin-bottom:12px}
+  button{width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a}
+  button:disabled{opacity:.5;cursor:default}
+  #log{margin-top:18px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+  .g{color:#00e676}.r{color:#ff5252}.d{color:#8fa89a}
+</style>
+</head>
+<body>
+<h2 style="margin:0 0 6px">Copy my account &rarr; TEST database</h2>
+<p style="font-size:13px;color:#8fa89a;margin:0 0 16px;line-height:1.5">
+  Copies one account (login + profile + saved rounds) from the <b>live</b> database into the
+  <b>test</b> database, so the dev site works with your real credentials and history.
+</p>
+
+<div class="warn">
+  <b>Production is only ever READ.</b> This page never writes to the live database, and never
+  deletes anything. It writes only to <code>westchester-golf-test</code>.
+</div>
+
+<div id="guard"></div>
+
+<div id="form" style="display:none">
+  <input id="u" placeholder="username (e.g. kohyo)" autocapitalize="none" autocorrect="off">
+  <button id="go" onclick="run()">Copy this account into TEST</button>
+</div>
+<div id="log"></div>
+
+<script src="firebase-config.js"></script>
+<script>
+var PROD_PROJECT = 'westchester-golf-app';
+var TEST_PROJECT = 'westchester-golf-test';
+var prodDb = null, testDb = null;
+
+function log(msg, cls) {
+  var el = document.getElementById('log');
+  el.innerHTML += '<div class="' + (cls || 'd') + '">' + msg + '</div>';
+}
+
+_firebaseLoadPromise.then(function () {
+  var guard = document.getElementById('guard');
+  if (!window._fbSDK || !_firebaseDB) {
+    guard.innerHTML = '<div class="warn">Firebase SDK failed to load. Reload the page.</div>';
+    return;
+  }
+  // HARD GUARD: the default app must be the TEST project. On the live site the
+  // default app is production, and this page must refuse to do anything there.
+  var defProject = (_fbSDK.app().options || {}).projectId;
+  if (defProject !== TEST_PROJECT) {
+    guard.innerHTML = '<div class="warn"><b>Refusing to run.</b> This page only works on the dev/staging site ' +
+      '(test database). This page is connected to <code>' + defProject + '</code>.</div>';
+    return;
+  }
+  testDb = _firebaseDB;
+  var prodApp;
+  try {
+    prodApp = _fbSDK.app('prod');
+  } catch (e) {
+    prodApp = _fbSDK.initializeApp(FIREBASE_CONFIG_PROD, 'prod');
+  }
+  prodDb = prodApp.database();
+  prodApp.auth().signInAnonymously().then(function () {
+    guard.innerHTML = '<div class="ok">Connected. Reading from <b>' + PROD_PROJECT +
+      '</b>, writing to <b>' + TEST_PROJECT + '</b>.</div>';
+    document.getElementById('form').style.display = 'block';
+    document.getElementById('u').value = 'kohyo';
+  }).catch(function (e) {
+    guard.innerHTML = '<div class="warn">Could not authenticate against production: ' + e.message + '</div>';
+  });
+});
+
+function run() {
+  var username = (document.getElementById('u').value || '').trim().toLowerCase();
+  if (!username) { alert('Enter a username.'); return; }
+  var btn = document.getElementById('go');
+  btn.disabled = true; btn.textContent = 'Copying...';
+  document.getElementById('log').innerHTML = '';
+
+  var cred = null, uid = null;
+
+  log('Reading credentials/' + username + ' from LIVE...');
+  prodDb.ref('credentials/' + username).once('value').then(function (snap) {
+    cred = snap.val();
+    if (!cred) throw new Error('No account named "' + username + '" in the live database.');
+    uid = cred.uid;
+    if (!uid) throw new Error('That account has no uid recorded.');
+    log('  found uid ' + uid, 'g');
+    log('Reading users/' + uid + ' from LIVE (profile + rounds)...');
+    return prodDb.ref('users/' + uid).once('value');
+  }).then(function (snap) {
+    var userNode = snap.val() || {};
+    var roundCount = userNode.rounds ? Object.keys(userNode.rounds).length : 0;
+    log('  ' + roundCount + ' round(s), profile ' + (userNode.profile ? 'present' : 'none'), 'g');
+
+    log('Writing into TEST...');
+    var writes = [
+      testDb.ref('credentials/' + username).set(cred),
+      testDb.ref('users/' + uid).set(userNode)
+    ];
+    if (cred.displayName) writes.push(testDb.ref('nameIndex/' + cred.displayName).set(uid));
+    writes.push(testDb.ref('usernames/' + username).set(uid));
+    return Promise.all(writes).then(function () { return roundCount; });
+  }).then(function (roundCount) {
+    log('  credentials/' + username + '  written', 'g');
+    log('  users/' + uid + '  written (' + roundCount + ' rounds)', 'g');
+    log('  usernames + nameIndex  written', 'g');
+    log('');
+    log('DONE. Sign in on the dev site with your normal username and password.', 'g');
+    log('The live database was not modified.', 'd');
+    btn.textContent = 'Copy again';
+    btn.disabled = false;
+  }).catch(function (e) {
+    log('FAILED: ' + (e && e.message ? e.message : e), 'r');
+    log('Nothing was changed in the live database.', 'd');
+    btn.textContent = 'Try again';
+    btn.disabled = false;
+  });
+}
+</script>
+</body>
+</html>
