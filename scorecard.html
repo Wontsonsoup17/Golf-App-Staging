@@ -689,7 +689,7 @@ body { display: flex; flex-direction: column; }
       // 27-hole course, back nine not chosen yet: ask before showing any
       // hole-10+ par. Solo rounds have no host, so the player picks.
       if (backNinePending()) {
-        html += renderBackNineChooser(course, true);
+        html += renderBackNineChooser(course, true, true);
         html += '<div class="hole-nav-row"><button class="hole-nav-btn prev" onclick="goToHole(' + (currentHole - 1) + ')">&larr; Hole ' + currentHole + '</button><div></div></div>';
         document.getElementById('mainContent').innerHTML = html;
         return;

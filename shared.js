@@ -781,13 +781,14 @@ function roundCourseName(course) {
 
 // ---- Back-nine chooser UI (shared by scorecard solo/group/scramble) ----
 // The page defines window.chooseBackNine(key).
-function renderBackNineChooser(course, canChoose) {
+// solo: true drops the "everyone in the round" wording (no other players).
+function renderBackNineChooser(course, canChoose, solo) {
   var opts = backNineOptions(course, course.nineFront);
   var html = '<div class="card" style="border-color:rgba(201,162,75,0.35);text-align:center;padding:18px 16px">';
   html += '<div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:6px">Hole 10</div>';
   if (canChoose) {
     html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:20px;color:var(--text-bright,#fff);margin-bottom:4px">Which nine next?</div>';
-    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">You played <strong style="color:var(--text)">' + course.nines[course.nineFront].label + '</strong>. Pick the back nine &mdash; everyone in the round sees it instantly.</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">You played <strong style="color:var(--text)">' + course.nines[course.nineFront].label + '</strong>. Pick the back nine' + (solo ? '' : ' &mdash; everyone in the round sees it instantly') + '.</div>';
     opts.forEach(function(o) {
       html += '<button onclick="chooseBackNine(\'' + o.key + '\')" style="display:block;width:100%;padding:14px;margin-bottom:8px;background:rgba(201,162,75,0.10);border:1px solid rgba(201,162,75,0.45);border-radius:10px;color:var(--text-bright,#fff);font-size:16px;font-weight:700;cursor:pointer">' +
               o.label + ' <span style="font-size:12px;font-weight:600;color:var(--text-muted)">&bull; Par ' + o.par + '</span></button>';
