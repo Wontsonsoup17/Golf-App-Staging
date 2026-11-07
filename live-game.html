@@ -47,7 +47,7 @@
 })();
 </script>
 <script>
-(function(){var v='206';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='211';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -59,7 +59,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Live Game - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=206">
+<link rel="stylesheet" href="shared.css?v=211">
 <style>
   .live-back-btn {
     display: flex;
@@ -334,6 +334,16 @@
     font-size: 13px;
     color: var(--text-muted);
   }
+
+/* ===== FIXED LAYOUT — keeps bottom nav glued on iOS while scrolling (same fix as stats.html) ===== */
+html, body { height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; }
+.user-header { flex: 0 0 auto; position: relative; top: auto; }
+.header { flex: 0 0 auto; position: relative; top: auto; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.main { flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: 24px; }
+.bottom-nav { flex: 0 0 auto; position: relative; bottom: auto; -webkit-transform: none; transform: none; will-change: auto; }
+#broadcastBanner, #activeRoundBanner { flex: 0 0 auto; }
+#liveRoundsSection { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; }
 </style>
 </head>
 <body>
@@ -368,9 +378,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=206"></script>
-<script src="shared.js?v=206"></script>
-<script src="firebase-sync.js?v=206"></script>
+<script src="firebase-config.js?v=211"></script>
+<script src="shared.js?v=211"></script>
+<script src="firebase-sync.js?v=211"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('live');
@@ -448,7 +458,7 @@
       return;
     }
 
-    var course = getCourse(R.courseId);
+    var course = composeCourse(getCourse(R.courseId), R.nines && R.nines.front, R.nines && R.nines.back);
     if (!course) return;
 
     // Apply sunset theme for "other" courses
@@ -457,7 +467,7 @@
       document.querySelector('meta[name="theme-color"]').content = '#0f0a07';
     }
 
-    document.getElementById('courseName').textContent = course.name;
+    document.getElementById('courseName').textContent = roundCourseName(course);
     document.getElementById('courseSub').textContent = R.teeLabel + ' Tees  |  Par ' + course.par + '  |  ' + formatDate(R.date);
 
     renderLeaderboard(R, course, user, null);
@@ -468,6 +478,9 @@
   // ============================
   function initGroupLive(user, groupCode) {
     var gotData = false;
+    // null until the first snapshot; used to notice the moment my own finished
+    // flag is cleared by the host rather than firing on initial load.
+    var _wasFinishedForMe = null;
     listenToGroupRound(groupCode, function(data) {
       gotData = true;
       // Round was fully deleted from Firebase (cleanup ran after delay)
@@ -491,7 +504,7 @@
       if (data.meta && data.meta.status === 'ended' || data.meta && data.meta.status === 'finished') {
         (function() {
           var tempR = groupDataToRound(data, groupCode);
-          var endedCourse = applyHoleOverrides(getCourse(tempR.courseId), tempR._holeOverrides);
+          var endedCourse = resolveRoundCourse(tempR.courseId, tempR._nines, tempR._holeOverrides);
           if (endedCourse && user) {
             var myName = tempR._uidToName[user.uid];
             var myHolesPlayed = myName ? tempR.scores[myName].filter(function(s) { return s > 0; }).length : 0;
@@ -501,7 +514,7 @@
             });
             var round = {
               id: Date.now().toString(),
-              courseId: endedCourse.id, courseName: endedCourse.name,
+              courseId: endedCourse.id, courseName: roundCourseName(endedCourse),
               tee: tempR.tee, teeLabel: tempR.teeLabel, par: endedCourse.par, date: tempR.date,
               players: tempR.players.slice(),
               scores: JSON.parse(JSON.stringify(tempR.scores)),
@@ -510,11 +523,14 @@
               groupCode: groupCode, holesCompleted: holesCompleted,
               incomplete: myHolesPlayed < 18
             };
+            if (tempR._nines) round.nines = tempR._nines;
             // Replace existing saved copy if it exists
             var rounds = loadRounds();
             var idx = -1;
             for (var ri = rounds.length - 1; ri >= 0; ri--) {
-              if (rounds[ri].groupCode === groupCode) { idx = ri; break; }
+              // groupCode alone is not unique - memorable codes get reused
+              // across weeks - so the date must match too.
+              if (rounds[ri].groupCode === groupCode && rounds[ri].date === round.date) { idx = ri; break; }
             }
             if (idx >= 0) {
               round.id = rounds[idx].id;
@@ -529,7 +545,10 @@
       }
 
       // Show blocking modal when admin force-ends the round
-      if (data.meta && data.meta.status === 'ended' && !document.getElementById('roundEndedModal')) {
+      // Players get the blocking "Round Ended" modal; the host does not, because
+      // the host needs to reach the Reopen card underneath it.
+      if (data.meta && data.meta.status === 'ended' && data.meta.createdBy !== user.uid
+          && !document.getElementById('roundEndedModal')) {
         var endedModal = document.createElement('div');
         endedModal.id = 'roundEndedModal';
         endedModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;animation:broadcastFadeIn 0.3s ease';
@@ -545,7 +564,7 @@
       }
 
       var R = groupDataToRound(data, groupCode);
-      var course = applyHoleOverrides(getCourse(R.courseId), R._holeOverrides);
+      var course = resolveRoundCourse(R.courseId, R._nines, R._holeOverrides);
       if (!course) {
         document.getElementById('mainContent').innerHTML =
           '<div class="empty-state">' +
@@ -557,7 +576,23 @@
 
       // Check if current user is the admin and if they've finished
       var isAdmin = data.meta.createdBy === user.uid;
-      var iAmFinished = data.finishedPlayers && data.finishedPlayers[user.uid] === true;
+      var finishedMap = data.finishedPlayers || {};
+      var iAmFinished = finishedMap[user.uid] === true;
+
+      // The host reopened the round (or reopened me specifically). Drop the
+      // "Round Ended" modal if it is up, take back the active-round code, and
+      // offer a one-tap return to the scorecard.
+      if (!isFinished) {
+        var staleEnded = document.getElementById('roundEndedModal');
+        if (staleEnded && staleEnded.parentNode) staleEnded.parentNode.removeChild(staleEnded);
+        if (data.players && data.players[user.uid]) {
+          localStorage.setItem('active-group-code', groupCode);
+        }
+      }
+      if (_wasFinishedForMe === true && !iAmFinished && !isFinished) {
+        showReopenedModal(groupCode);
+      }
+      _wasFinishedForMe = iAmFinished;
 
       // Apply sunset theme for "other" courses
       if (course.group === 'other') {
@@ -565,12 +600,12 @@
         document.querySelector('meta[name="theme-color"]').content = '#0f0a07';
       }
 
-      document.getElementById('courseName').textContent = course.name;
+      document.getElementById('courseName').textContent = roundCourseName(course);
       document.getElementById('courseSub').textContent = R.teeLabel + ' Tees  |  Par ' + course.par + '  |  ' + formatDate(R.date);
 
       // Fetch avatars for all players, then render
       fetchPlayerAvatars(R._playerUids, function() {
-        renderLeaderboard(R, course, user, groupCode, isAdmin, iAmFinished, isFinished);
+        renderLeaderboard(R, course, user, groupCode, isAdmin, iAmFinished, isFinished, finishedMap);
       });
     });
 
@@ -589,8 +624,9 @@
   // ============================
   // RENDER LEADERBOARD
   // ============================
-  function renderLeaderboard(R, course, user, groupCode, isAdmin, iAmFinished, isFinished) {
+  function renderLeaderboard(R, course, user, groupCode, isAdmin, iAmFinished, isFinished, finishedMap) {
     var content = document.getElementById('mainContent');
+    finishedMap = finishedMap || {};
     var scorecardUrl = groupCode ? 'scorecard.html?group=' + groupCode : 'scorecard.html';
 
     // Build player stats
@@ -732,12 +768,22 @@
         html += '<div class="lb-rank ' + rankClass + '">' + ps.rank + '</div>';
       }
       var isPlayerAdmin = groupCode && R._nameToUid && R._createdBy && R._nameToUid[ps.name] === R._createdBy;
-      html += '<div class="lb-player-name">' + styledName(ps.name) + (isMe ? '<span class="you-tag">YOU</span>' : '') + (isPlayerAdmin ? '<span style="font-size:9px;font-weight:700;color:#f5a623;background:rgba(245,166,35,0.15);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;margin-left:6px;vertical-align:middle">&#9733; HOST</span>' : '') + '</div>';
+      var psUid = (R._nameToUid && R._nameToUid[ps.name]) || null;
+      var psFinished = !!(psUid && finishedMap[psUid] === true);
+      var donePill = psFinished
+        ? '<span style="font-size:9px;font-weight:700;color:#7a9e86;background:rgba(122,158,134,0.18);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;margin-left:6px;vertical-align:middle">DONE</span>'
+        : '';
+      html += '<div class="lb-player-name">' + styledName(ps.name) + (isMe ? '<span class="you-tag">YOU</span>' : '') + (isPlayerAdmin ? '<span style="font-size:9px;font-weight:700;color:#f5a623;background:rgba(245,166,35,0.15);padding:2px 6px;border-radius:4px;letter-spacing:0.5px;margin-left:6px;vertical-align:middle">&#9733; HOST</span>' : '') + donePill + '</div>';
       html += '<div class="lb-player-score">';
       html += '<div class="lb-total">' + (ps.holesPlayed > 0 ? ps.totalScore : '-') + '</div>';
       html += '<div class="lb-diff ' + diffClass + '">' + diffText + '</div>';
       html += '<div class="lb-holes-played">' + ps.holesPlayed + '/18 holes</div>';
       html += '</div>';
+      // Host-only: pull a player who finished by accident back into the round.
+      if (groupCode && isAdmin && psFinished && !isFinished && psUid) {
+        html += '<button onclick="event.stopPropagation();reopenPlayerFromLive(\'' + psUid + '\',\'' + ps.name.replace(/'/g, "\\'") + '\')" ' +
+                'style="background:rgba(201,162,75,0.15);color:var(--gold,#c9a24b);border:1px solid rgba(201,162,75,0.4);padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;margin-right:8px;white-space:nowrap">Reopen</button>';
+      }
       html += '<div class="lb-expand-icon">&rsaquo;</div>';
       html += '</div>';
 
@@ -761,6 +807,15 @@
     });
 
     html += '</div>'; // leaderboard
+
+    // Admin: undo an accidental end. Available for as long as the round node
+    // survives (ROUND_CLEANUP_DELAY_MS in firebase-sync.js).
+    if (groupCode && isAdmin && isFinished) {
+      html += '<div style="background:var(--bg-card,#1a2e1a);border:1px solid rgba(201,162,75,0.3);border-radius:var(--radius-sm,10px);padding:14px;margin-bottom:12px;text-align:center">' +
+                '<div style="font-size:13px;color:var(--text-muted,#7a9e86);margin-bottom:10px">Ended this round by mistake?</div>' +
+                '<button onclick="reopenRoundFromLive()" style="background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;border:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;width:100%">Reopen Round for Everyone</button>' +
+              '</div>';
+    }
 
     // Admin: End Round button (only show if round is still active)
     if (groupCode && isAdmin && iAmFinished && !isFinished) {
@@ -833,6 +888,55 @@
     });
   };
 
+  // Shown to a player the moment the host reopens their round.
+  function showReopenedModal(groupCode) {
+    if (document.getElementById('roundReopenedModal')) return;
+    var m = document.createElement('div');
+    m.id = 'roundReopenedModal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+    m.innerHTML =
+      '<div style="background:var(--bg-card,#1a2e1a);border:1px solid rgba(201,162,75,0.35);border-radius:16px;padding:32px 24px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.6)">' +
+        '<div style="font-size:48px;margin-bottom:12px">&#127948;</div>' +
+        '<h3 style="color:var(--gold,#c9a24b);font-size:20px;margin-bottom:8px">Round Reopened</h3>' +
+        '<p style="color:var(--text-muted,#7a9e86);font-size:14px;line-height:1.5;margin-bottom:24px">The host reopened this round. Your scores are still here &mdash; pick up where you left off.</p>' +
+        '<button onclick="window.location.href=\'scorecard.html?group=' + groupCode + '\'" style="width:100%;padding:14px;background:linear-gradient(135deg,#b8860b,#d4af37);color:#1a1a1a;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-bottom:10px">Back to My Scorecard</button>' +
+        '<button onclick="var e=document.getElementById(\'roundReopenedModal\');if(e&&e.parentNode)e.parentNode.removeChild(e);" style="width:100%;padding:12px;background:transparent;color:var(--text-muted,#7a9e86);font-size:13px;border:1px solid rgba(122,158,134,0.3);border-radius:10px;cursor:pointer">Keep Watching</button>' +
+      '</div>';
+    document.body.appendChild(m);
+  }
+
+  // Host pulls one player back into the round after an accidental finish.
+  window.reopenPlayerFromLive = function(uid, name) {
+    if (!uid) return;
+    if (!confirm('Reopen the round for ' + name + '? They will be able to keep scoring.')) return;
+    var code = new URLSearchParams(window.location.search).get('group');
+    if (!code) return;
+    reopenPlayerRound(code, uid).then(function(res) {
+      if (res && res.ok === false) {
+        alert('This round has already been cleaned up, so it can no longer be reopened.');
+      }
+    }).catch(function() {
+      alert('Could not reopen that player. Check your connection and try again.');
+    });
+  };
+
+  // Host undoes an accidental "End Round for All".
+  window.reopenRoundFromLive = function() {
+    if (!confirm('Reopen this round for everyone? Players can rejoin and keep scoring from where they left off.')) return;
+    var code = new URLSearchParams(window.location.search).get('group');
+    if (!code) return;
+    reopenGroupRound(code).then(function(res) {
+      if (res && res.ok === false) {
+        alert('This round has already been cleaned up, so it can no longer be reopened.');
+        return;
+      }
+      localStorage.setItem('active-group-code', code);
+      window.location.href = 'scorecard.html?group=' + code;
+    }).catch(function() {
+      alert('Could not reopen the round. Check your connection and try again.');
+    });
+  };
+
   // Admin ends round from live spectator view
   window.endRoundFromLive = function() {
     if (!confirm('End the round for all players? Everyone\'s scores will be saved as-is.')) return;
@@ -841,7 +945,9 @@
     if (!code) return;
     endGroupRoundForAll(code).catch(function() {}).then(function() {
       localStorage.removeItem('active-group-code');
-      window.location.href = 'history.html';
+      // Stay on the live view. The listener re-renders with final results and
+      // the "Reopen Round for Everyone" card, so an accidental end is one tap
+      // from being undone instead of stranding the host on the history page.
     });
   };
 </script>

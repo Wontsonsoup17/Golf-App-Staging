@@ -47,7 +47,7 @@
 })();
 </script>
 <script>
-(function(){var v='206';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='211';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -59,7 +59,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Live Round - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=206">
+<link rel="stylesheet" href="shared.css?v=211">
 <style>
 /* ===== SCRAMBLE MODE ===== */
 .scramble-lobby { padding: 0; }
@@ -98,6 +98,16 @@
 .scramble-lb-row:last-child { border-bottom: none; }
 .team-name-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .team-name-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 24px; max-width: 360px; width: 100%; text-align: center; }
+
+/* ===== FIXED LAYOUT — keeps bottom nav glued on iOS while scrolling (same fix as stats.html) ===== */
+html, body { height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; }
+.user-header { flex: 0 0 auto; position: relative; top: auto; }
+.header { flex: 0 0 auto; position: relative; top: auto; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.main { flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: 24px; }
+.bottom-nav { flex: 0 0 auto; position: relative; bottom: auto; -webkit-transform: none; transform: none; will-change: auto; }
+#broadcastBanner, #activeRoundBanner { flex: 0 0 auto; }
+.sc-build-tag { display: none; }
 </style>
 </head>
 <body>
@@ -123,11 +133,11 @@
 </div>
 
 <nav class="bottom-nav" id="bottomNav"></nav>
-<div style="text-align:center;font-size:9px;color:#333;padding:4px;opacity:0.5">v110</div>
+<div class="sc-build-tag" style="text-align:center;font-size:9px;color:#333;padding:4px;opacity:0.5">v110</div>
 
-<script src="firebase-config.js?v=206"></script>
-<script src="shared.js?v=206"></script>
-<script src="firebase-sync.js?v=206"></script>
+<script src="firebase-config.js?v=211"></script>
+<script src="shared.js?v=211"></script>
+<script src="firebase-sync.js?v=211"></script>
 <script>
   // ==================== SCORE EFFECTS (emoji burst) ====================
   // Defined at script scope so both solo and group modes can access them
@@ -587,8 +597,11 @@
       return;
     }
 
-    const course = getCourse(R.courseId);
+    // Multi-nine courses compose their 18 from R.nines (front chosen at setup,
+    // back chosen at hole 10). `let` because chooseBackNine() rebuilds it.
+    let course = composeCourse(getCourse(R.courseId), R.nines && R.nines.front, R.nines && R.nines.back);
     let currentHole = R.currentHole || 0;
+    function backNinePending() { return !!(course && course._backPending && currentHole >= 9); }
 
     // Apply sunset theme for "other" courses
     if (course && course.group === 'other') {
@@ -611,16 +624,22 @@
       }
     });
 
-    document.getElementById('courseName').textContent = course.name;
-    document.getElementById('courseSub').textContent = `${R.teeLabel} Tees  |  Par ${course.par}  |  ${formatDate(R.date)}`;
+    function setSoloHeader() {
+      document.getElementById('courseName').textContent = roundCourseName(course);
+      document.getElementById('courseSub').textContent = `${R.teeLabel} Tees  |  Par ${course.par}  |  ${formatDate(R.date)}`;
+    }
+    setSoloHeader();
 
-    // Auto-set current hole to par if unscored on initial load
+    // Auto-set current hole to par if unscored on initial load. Skipped while
+    // the back nine is still unchosen: the placeholder par would be wrong.
     const initHole = course.holes[currentHole];
-    R.players.forEach(p => {
-      if (R.scores[p][currentHole] === 0) {
-        R.scores[p][currentHole] = initHole.par;
-      }
-    });
+    if (!backNinePending()) {
+      R.players.forEach(p => {
+        if (R.scores[p][currentHole] === 0) {
+          R.scores[p][currentHole] = initHole.par;
+        }
+      });
+    }
 
     function save() {
       R.currentHole = currentHole;
@@ -666,6 +685,15 @@
       }
       html += '</div>';
       html += '<button onclick="showHolePicker()" style="width:100%;padding:8px;margin:6px 0 2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#bbb;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.3px">&#8597; Jump to Hole</button>';
+
+      // 27-hole course, back nine not chosen yet: ask before showing any
+      // hole-10+ par. Solo rounds have no host, so the player picks.
+      if (backNinePending()) {
+        html += renderBackNineChooser(course, true);
+        html += '<div class="hole-nav-row"><button class="hole-nav-btn prev" onclick="goToHole(' + (currentHole - 1) + ')">&larr; Hole ' + currentHole + '</button><div></div></div>';
+        document.getElementById('mainContent').innerHTML = html;
+        return;
+      }
 
       // Hole display
       html += `
@@ -872,12 +900,22 @@
       }
       doAdvanceHole(idx);
     }
+    // Solo: the player picks the back nine at hole 10, then the hole is set
+    // up normally (par pre-fill etc.) against the real nine.
+    window.chooseBackNine = function(key) {
+      R.nines = R.nines || { front: course.nineFront };
+      R.nines.back = key;
+      course = composeCourse(getCourse(R.courseId), R.nines.front, R.nines.back);
+      setSoloHeader();
+      doAdvanceHole(currentHole);
+    };
+
     function doAdvanceHole(idx) {
       currentHole = idx;
       const hole = course.holes[currentHole];
       R.players.forEach(p => {
         var isNewHole = R.scores[p][currentHole] === 0;
-        if (isNewHole) {
+        if (isNewHole && !backNinePending()) {
           R.scores[p][currentHole] = hole.par;
         }
         // Force tracking to 0 for brand-new holes
@@ -887,7 +925,7 @@
           R.tracking[p].penalties[currentHole] = 0;
         }
       });
-      save(); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      save(); render(); (document.getElementById('mainContent') || window).scrollTo({ top: 0, behavior: 'smooth' });
     }
     // Surgical DOM updates for solo mode (no full re-render, no scroll jump)
     function updateSoloCard(player) {
@@ -964,7 +1002,7 @@
       const round = {
         id: Date.now().toString(),
         courseId: course.id,
-        courseName: course.name,
+        courseName: roundCourseName(course),
         tee: R.tee,
         teeLabel: R.teeLabel,
         par: course.par,
@@ -976,6 +1014,7 @@
         holesCompleted: holesCompleted,
         incomplete: anyIncomplete
       };
+      if (R.nines) round.nines = { front: R.nines.front, back: R.nines.back || null };
 
       // Save to localStorage
       const rounds = loadRounds();
@@ -1080,7 +1119,7 @@
         // Save the round data with FINAL scores for all players
         (function() {
           var tempR = groupDataToRound(data, groupCode);
-          var endedCourse = applyHoleOverrides(getCourse(tempR.courseId), tempR._holeOverrides);
+          var endedCourse = resolveRoundCourse(tempR.courseId, tempR._nines, tempR._holeOverrides);
           if (endedCourse) {
             var myName = tempR._uidToName[user.uid];
             var myHolesPlayed = myName ? tempR.scores[myName].filter(function(s) { return s > 0; }).length : 0;
@@ -1092,7 +1131,7 @@
             var round = {
               id: Date.now().toString(),
               courseId: endedCourse.id,
-              courseName: endedCourse.name,
+              courseName: roundCourseName(endedCourse),
               tee: tempR.tee,
               teeLabel: tempR.teeLabel,
               par: endedCourse.par,
@@ -1105,13 +1144,14 @@
               holesCompleted: holesCompleted,
               incomplete: myHolesPlayed < 18
             };
+            if (tempR._nines) round.nines = tempR._nines;
 
             // Check if this player already saved an early copy of this round
             // If so, REPLACE it with the final data (which has everyone's completed scores)
             var rounds = loadRounds();
             var existingIdx = -1;
             for (var ri = rounds.length - 1; ri >= 0; ri--) {
-              if (rounds[ri].groupCode === groupCode) {
+              if (rounds[ri].groupCode === groupCode && rounds[ri].date === round.date) {
                 existingIdx = ri;
                 break;
               }
@@ -1152,9 +1192,11 @@
       }
 
       R = groupDataToRound(data, groupCode);
-      const baseCourse = getCourse(R.courseId);
-      const course = applyHoleOverrides(baseCourse, R._holeOverrides);
+      // Compose the nines first (multi-nine courses), then temp-hole overrides.
+      const composedBase = composeCourse(getCourse(R.courseId), (R._nines || {}).front, (R._nines || {}).back);
+      const course = applyHoleOverrides(composedBase, R._holeOverrides);
       course_ref.current = course;
+      course_ref.base = composedBase;
 
       if (!course) {
         document.getElementById('mainContent').innerHTML = '<div class="empty-state"><p>Course not found.</p></div>';
@@ -1168,10 +1210,12 @@
       }
 
       // Update header
-      document.getElementById('courseName').textContent = course.name;
+      document.getElementById('courseName').textContent = roundCourseName(course);
       document.getElementById('courseSub').textContent = `${R.teeLabel} Tees  |  Par ${course.par}  |  ${formatDate(R.date)}`;
 
-      var newOverridesJson = JSON.stringify(R._holeOverrides || {});
+      // A change to either the temp-hole overrides OR the chosen nines means
+      // par/yards/HCP changed, so do a full re-render.
+      var newOverridesJson = JSON.stringify({ o: R._holeOverrides || {}, n: R._nines || {} });
       var overridesChanged = prevOverridesJson !== null && newOverridesJson !== prevOverridesJson;
       prevOverridesJson = newOverridesJson;
 
@@ -1198,7 +1242,7 @@
 
     function handleScrambleData(data) {
       var status = data.meta.status;
-      var course = applyHoleOverrides(getCourse(data.meta.courseId), data.meta && data.meta.holeOverrides);
+      var course = resolveRoundCourse(data.meta.courseId, data.meta.nines, data.meta && data.meta.holeOverrides);
       course_ref.current = course;
 
       if (course) {
@@ -1206,7 +1250,7 @@
           document.body.classList.add('sunset-theme');
           document.querySelector('meta[name="theme-color"]').content = '#0f0a07';
         }
-        document.getElementById('courseName').textContent = course.name;
+        document.getElementById('courseName').textContent = roundCourseName(course);
         document.getElementById('courseSub').textContent = (data.meta.teeLabel || '') + ' Tees | Par ' + course.par + ' | ' + formatDate(data.meta.date);
       }
 
@@ -1356,6 +1400,15 @@
       var iConfirmed = myConfirmed[user.uid] === true;
       var isLastHole = myHoleIdx >= 17;
       var isCreator = data.meta.createdBy === user.uid;
+
+      // 27-hole course: my team reached hole 10 before the host picked the
+      // back nine. Host sees the chooser, everyone else waits.
+      if (course._backPending && myHoleIdx >= 9) {
+        document.getElementById('mainContent').innerHTML =
+          '<div style="padding-top:12px">' + renderBackNineChooser(course, isCreator) + '</div>' +
+          '<div style="margin-bottom:80px"></div>';
+        return;
+      }
 
       var myTeamName = myTeam.name || (myTeamKey === 'teamA' ? 'Team A' : 'Team B');
       var oppTeamName = oppTeam.name || (oppTeamKey === 'teamA' ? 'Team A' : 'Team B');
@@ -1642,7 +1695,7 @@
       var round = {
         id: Date.now().toString(),
         courseId: course.id,
-        courseName: course.name,
+        courseName: roundCourseName(course),
         tee: data.meta.tee,
         teeLabel: data.meta.teeLabel,
         par: course.par,
@@ -1658,6 +1711,7 @@
         teamScores: JSON.parse(JSON.stringify(teamScores)),
         teams: JSON.parse(JSON.stringify(teams))
       };
+      if (data.meta.nines) round.nines = data.meta.nines;
 
       // Resolve the id against any existing local copy BEFORE writing to the
       // cloud. The old order called fbSaveRound() first with a fresh Date.now()
@@ -1666,7 +1720,7 @@
       var rounds = loadRounds();
       var exists = false;
       for (var i = rounds.length - 1; i >= 0; i--) {
-        if (rounds[i].groupCode === groupCode && rounds[i].gameType === 'scramble') {
+        if (rounds[i].groupCode === groupCode && rounds[i].date === round.date && rounds[i].gameType === 'scramble') {
           round.id = rounds[i].id;
           rounds[i] = round;
           exists = true;
@@ -1794,7 +1848,7 @@
       // Update hole picker state — group mode includes admin context for temp-hole controls
       window._hpState = {
         course: course,
-        baseCourse: getCourse(R.courseId),
+        baseCourse: course_ref.base || getCourse(R.courseId),
         overrides: R._holeOverrides || {},
         groupCode: groupCode,
         isAdmin: isCreator,
@@ -1835,6 +1889,20 @@
       }
       html += '</div>';
       html += '<button onclick="showHolePicker()" style="width:100%;padding:8px;margin:6px 0 2px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#bbb;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.3px">&#8597; Jump to Hole</button>';
+
+      // 27-hole course, back nine not chosen yet. The host picks (written to
+      // meta.nines.back, every phone re-renders); others see a waiting card.
+      // Scoring on holes 10-18 is held back until then so nobody scores
+      // against a placeholder par.
+      if (course._backPending && currentHole >= 9) {
+        html += renderBackNineChooser(course, isCreator);
+        html += '<div class="hole-nav-row">' +
+          (currentHole > 0 ? '<button class="hole-nav-btn prev" onclick="goToHole(' + (currentHole - 1) + ')">&larr; Hole ' + currentHole + '</button>' : '<div></div>') +
+          '<div></div></div>';
+        html += buildPlayersLeaderboard(R, course, myName);
+        document.getElementById('mainContent').innerHTML = html;
+        return;
+      }
 
       // Admin-only: Manage Temporary Hole — top-level button so it's discoverable.
       // The modal only operates on the current hole; the label reflects that.
@@ -2141,7 +2209,7 @@
               currentHole = idx;
               resetTrackingForHole(idx);
               renderGroup();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              (document.getElementById('mainContent') || window).scrollTo({ top: 0, behavior: 'smooth' });
             });
             return;
           }
@@ -2150,7 +2218,7 @@
       currentHole = idx;
       resetTrackingForHole(idx);
       renderGroup();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      (document.getElementById('mainContent') || window).scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     window.adj = function(delta) {
@@ -2213,6 +2281,15 @@
       updateGroupTracking(groupCode, user.uid, 'penaltyLocations', currentHole, null);
     };
 
+    // Host picks the back nine at hole 10. The listener sees meta.nines change
+    // and does a full re-render on every phone in the round.
+    window.chooseBackNine = function(key) {
+      if (!R || R._createdBy !== user.uid) { alert('Only the host can choose the back nine.'); return; }
+      setRoundBackNine(groupCode, key).catch(function(e) {
+        alert('Could not save the back nine: ' + (e && e.message ? e.message : 'unknown error'));
+      });
+    };
+
     window.refreshGroup = function() {
       // Full page reload to ensure everything is fresh
       window.location.reload();
@@ -2253,7 +2330,7 @@
         const round = {
           id: Date.now().toString(),
           courseId: course.id,
-          courseName: course.name,
+          courseName: roundCourseName(course),
           tee: R.tee,
           teeLabel: R.teeLabel,
           par: course.par,
@@ -2266,14 +2343,25 @@
           holesCompleted: holesCompleted,
           incomplete: isIncomplete
         };
+        if (R._nines) round.nines = R._nines;
 
-        // Save to Firebase cloud
-        fbSaveRound(user.uid, round).catch(() => {});
-
-        // Also save to localStorage as backup
+        // Reuse the saved copy for this group round if one already exists.
+        // A player can now be reopened after an accidental finish, so this save
+        // may run twice for the same round — keep one record, not two. Reusing
+        // the id means the cloud write overwrites rather than adding a second.
         const rounds = loadRounds();
-        rounds.push(round);
+        let existingIdx = -1;
+        for (let ri = rounds.length - 1; ri >= 0; ri--) {
+          if (rounds[ri].groupCode === groupCode && rounds[ri].date === round.date) { existingIdx = ri; break; }
+        }
+        if (existingIdx >= 0) {
+          round.id = rounds[existingIdx].id;
+          rounds[existingIdx] = round;
+        } else {
+          rounds.push(round);
+        }
         saveRounds(rounds);
+        fbSaveRound(user.uid, round).catch(() => {});
       }
 
       // Block the listener from saving a second copy
@@ -2310,7 +2398,7 @@
         const round = {
           id: Date.now().toString(),
           courseId: course.id,
-          courseName: course.name,
+          courseName: roundCourseName(course),
           tee: R.tee,
           teeLabel: R.teeLabel,
           par: course.par,
@@ -2323,11 +2411,25 @@
           holesCompleted: holesCompleted,
           incomplete: myHolesPlayed < 18
         };
+        if (R._nines) round.nines = R._nines;
 
-        fbSaveRound(user.uid, round).catch(() => {});
+        // Reuse the saved copy for this group round if one already exists.
+        // A player can now be reopened after an accidental finish, so this save
+        // may run twice for the same round — keep one record, not two. Reusing
+        // the id means the cloud write overwrites rather than adding a second.
         const rounds = loadRounds();
-        rounds.push(round);
+        let existingIdx = -1;
+        for (let ri = rounds.length - 1; ri >= 0; ri--) {
+          if (rounds[ri].groupCode === groupCode && rounds[ri].date === round.date) { existingIdx = ri; break; }
+        }
+        if (existingIdx >= 0) {
+          round.id = rounds[existingIdx].id;
+          rounds[existingIdx] = round;
+        } else {
+          rounds.push(round);
+        }
         saveRounds(rounds);
+        fbSaveRound(user.uid, round).catch(() => {});
       }
 
       // Block the listener from saving a second copy when 'ended' status comes back
@@ -2338,7 +2440,10 @@
         if (unsubscribe) unsubscribe();
         if (unsubConn) unsubConn();
         localStorage.removeItem('active-group-code');
-        window.location.href = 'history.html';
+        // Land on the live view rather than history: it shows the final
+        // leaderboard AND the "Reopen Round for Everyone" card, so an
+        // accidental end can be undone without hunting for the round code.
+        window.location.href = 'live-game.html?group=' + groupCode;
       });
     };
 

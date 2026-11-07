@@ -47,7 +47,7 @@
 })();
 </script>
 <script>
-(function(){var v='206';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='211';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -59,7 +59,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Course Setup - Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=206">
+<link rel="stylesheet" href="shared.css?v=211">
 </head>
 <body>
 <div class="user-header" id="userHeader"></div>
@@ -133,6 +133,12 @@
       </div>
     </div>
 
+    <div class="form-group" id="frontNineGroup" style="display:none">
+      <label>Front Nine</label>
+      <div class="tee-selector" id="nineSelector"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">27-hole course &mdash; you&rsquo;ll pick the back nine when you reach hole 10.</div>
+    </div>
+
     <div class="form-group">
       <label>Tee Selection</label>
       <div class="tee-selector" id="teeSelector"></div>
@@ -161,9 +167,9 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=206"></script>
-<script src="shared.js?v=206"></script>
-<script src="firebase-sync.js?v=206"></script>
+<script src="firebase-config.js?v=211"></script>
+<script src="shared.js?v=211"></script>
+<script src="firebase-sync.js?v=211"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('courses');
@@ -200,27 +206,65 @@
 
     // Scorecard table
     const teeKeys = Object.keys(course.tees);
-    let thtml = '<tr><th class="hole-col">Hole</th><th>Par</th>';
-    teeKeys.forEach(k => thtml += `<th>${course.tees[k].label}</th>`);
-    thtml += '<th>HCP</th></tr>';
-    for (let i = 0; i < 18; i++) {
-      if (i === 9) {
-        thtml += `<tr class="nine-total"><td class="hole-col">OUT</td><td>${course.holes.slice(0,9).reduce((a,h)=>a+h.par,0)}</td>`;
-        teeKeys.forEach(k => thtml += `<td>${course.holes.slice(0,9).reduce((a,h)=>a+(h[k]||0),0)}</td>`);
+    let thtml = '';
+    if (course.nines) {
+      // 27-hole course: one block per nine, as printed on the card
+      let holeNo = 1;
+      nineOrderOf(course).forEach(function(k) {
+        const n = course.nines[k];
+        thtml += `<tr><th class="hole-col" colspan="${teeKeys.length + 3}" style="text-align:left;padding-top:10px;color:var(--gold)">${n.label}</th></tr>`;
+        thtml += '<tr><th class="hole-col">Hole</th><th>Par</th>';
+        teeKeys.forEach(tk => thtml += `<th>${course.tees[tk].label}</th>`);
+        thtml += '<th>HCP</th></tr>';
+        n.holes.forEach(function(h) {
+          thtml += `<tr><td class="hole-col">${holeNo++}</td><td>${h.par}</td>`;
+          teeKeys.forEach(tk => thtml += `<td>${h[tk] || '—'}</td>`);
+          thtml += `<td>${h.hcp}</td></tr>`;
+        });
+        thtml += `<tr class="nine-total"><td class="hole-col">OUT</td><td>${n.holes.reduce((a,h)=>a+h.par,0)}</td>`;
+        teeKeys.forEach(tk => thtml += `<td>${n.holes.reduce((a,h)=>a+(h[tk]||0),0)}</td>`);
         thtml += '<td></td></tr>';
+      });
+    } else {
+      thtml += '<tr><th class="hole-col">Hole</th><th>Par</th>';
+      teeKeys.forEach(k => thtml += `<th>${course.tees[k].label}</th>`);
+      thtml += '<th>HCP</th></tr>';
+      for (let i = 0; i < 18; i++) {
+        if (i === 9) {
+          thtml += `<tr class="nine-total"><td class="hole-col">OUT</td><td>${course.holes.slice(0,9).reduce((a,h)=>a+h.par,0)}</td>`;
+          teeKeys.forEach(k => thtml += `<td>${course.holes.slice(0,9).reduce((a,h)=>a+(h[k]||0),0)}</td>`);
+          thtml += '<td></td></tr>';
+        }
+        const h = course.holes[i];
+        thtml += `<tr><td class="hole-col">${h.num}</td><td>${h.par}</td>`;
+        teeKeys.forEach(k => thtml += `<td>${h[k] || '—'}</td>`);
+        thtml += `<td>${h.hcp}</td></tr>`;
       }
-      const h = course.holes[i];
-      thtml += `<tr><td class="hole-col">${h.num}</td><td>${h.par}</td>`;
-      teeKeys.forEach(k => thtml += `<td>${h[k] || '—'}</td>`);
-      thtml += `<td>${h.hcp}</td></tr>`;
+      thtml += `<tr class="nine-total"><td class="hole-col">IN</td><td>${course.holes.slice(9).reduce((a,h)=>a+h.par,0)}</td>`;
+      teeKeys.forEach(k => thtml += `<td>${course.holes.slice(9).reduce((a,h)=>a+(h[k]||0),0)}</td>`);
+      thtml += '<td></td></tr>';
+      thtml += `<tr class="grand-total"><td class="hole-col">TOT</td><td>${course.par}</td>`;
+      teeKeys.forEach(k => thtml += `<td>${course.tees[k].yards}</td>`);
+      thtml += '<td></td></tr>';
     }
-    thtml += `<tr class="nine-total"><td class="hole-col">IN</td><td>${course.holes.slice(9).reduce((a,h)=>a+h.par,0)}</td>`;
-    teeKeys.forEach(k => thtml += `<td>${course.holes.slice(9).reduce((a,h)=>a+(h[k]||0),0)}</td>`);
-    thtml += '<td></td></tr>';
-    thtml += `<tr class="grand-total"><td class="hole-col">TOT</td><td>${course.par}</td>`;
-    teeKeys.forEach(k => thtml += `<td>${course.tees[k].yards}</td>`);
-    thtml += '<td></td></tr>';
     document.getElementById('courseTable').innerHTML = thtml;
+
+    // Front-nine selector (multi-nine courses only)
+    let selectedNine = course.nines ? nineOrderOf(course)[0] : null;
+    if (course.nines) {
+      document.getElementById('frontNineGroup').style.display = '';
+      document.getElementById('nineSelector').innerHTML = nineOrderOf(course).map((k, i) => {
+        const n = course.nines[k];
+        const par = n.holes.reduce((a, h) => a + h.par, 0);
+        return `<button class="tee-btn ${i===0?'active':''}" data-nine="${k}" onclick="selectNine('${k}')">${n.short || n.label} (Par ${par})</button>`;
+      }).join('');
+      window.selectNine = function(k) {
+        selectedNine = k;
+        document.querySelectorAll('#nineSelector .tee-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`#nineSelector .tee-btn[data-nine="${k}"]`).classList.add('active');
+      };
+    }
+    function ninesOpts() { return selectedNine ? { nines: { front: selectedNine } } : undefined; }
 
     // Tee selector
     document.getElementById('teeSelector').innerHTML = Object.keys(course.tees).map((key, i) => {
@@ -295,7 +339,7 @@
       btn.disabled = true;
       btn.textContent = 'Creating...';
 
-      createGroupRoundWithCode(user.uid, displayName, course.id, selectedTee, course.tees[selectedTee].label, date, customCode)
+      createGroupRoundWithCode(user.uid, displayName, course.id, selectedTee, course.tees[selectedTee].label, date, customCode, 0, 'standard', ninesOpts())
         .then(function(code) {
           localStorage.setItem('active-group-code', code);
           window.location.href = 'scorecard.html?group=' + code;
@@ -355,7 +399,7 @@
           tracking[p] = createPlayerTracking();
         });
 
-        setActiveRound({
+        const activeRound = {
           courseId: course.id,
           tee: selectedTee,
           teeLabel: course.tees[selectedTee].label,
@@ -364,7 +408,9 @@
           scores,
           tracking,
           currentHole: 0
-        });
+        };
+        if (selectedNine) activeRound.nines = { front: selectedNine };
+        setActiveRound(activeRound);
         window.location.href = 'scorecard.html';
       }
     };

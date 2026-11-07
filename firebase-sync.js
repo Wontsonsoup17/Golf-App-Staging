@@ -70,10 +70,13 @@ function createGroupRound(uid, displayName, courseId, tee, teeLabel, date) {
 }
 
 // Create a group round with a specific code
-function createGroupRoundWithCode(uid, displayName, courseId, tee, teeLabel, date, code, startingHole, gameType) {
+// opts (optional): { nines: { front: 'one' } } for multi-nine courses. The
+// back nine is added later by setRoundBackNine() when the host reaches hole 10.
+function createGroupRoundWithCode(uid, displayName, courseId, tee, teeLabel, date, code, startingHole, gameType, opts) {
   return new Promise((resolve, reject) => {
     const roundRef = db.ref('activeRounds/' + code);
     var isScramble = gameType === 'scramble';
+    var nines = (opts && opts.nines && opts.nines.front) ? { front: opts.nines.front } : null;
 
     roundRef.once('value').then(snap => {
       if (snap.exists()) {
@@ -187,6 +190,7 @@ function createGroupRoundWithCode(uid, displayName, courseId, tee, teeLabel, dat
           currentHole: { [uid]: 0 }
         };
       }
+      if (nines) roundData.meta.nines = nines;
 
       return roundRef.set(roundData).then(() => {
         var courseName = typeof getCourse === 'function' ? (getCourse(courseId) || {}).name || courseId : courseId;
@@ -306,6 +310,13 @@ function clearHoleOverride(code, holeIndex) {
   return db.ref('activeRounds/' + code + '/meta/holeOverrides/' + holeIndex).remove();
 }
 
+// Multi-nine courses: host picks the back nine at hole 10. Lives next to
+// holeOverrides in meta so every client's listener re-renders with the new 18.
+function setRoundBackNine(code, nineKey) {
+  bumpRoundActivity(code);
+  return db.ref('activeRounds/' + code + '/meta/nines/back').set(nineKey);
+}
+
 // Finish a group round (only creator should call this)
 function finishGroupRound(code) {
   return db.ref('activeRounds/' + code + '/meta/status').set('finished');
@@ -340,10 +351,7 @@ function checkAndCleanupRound(code) {
         status: 'finished',
         finishedAt: firebase.database.ServerValue.TIMESTAMP
       }).then(function() {
-        // Clean up after 5 minutes so the code can eventually be reused
-        setTimeout(function() {
-          db.ref('activeRounds/' + code).remove().catch(function() {});
-        }, 300000);
+        scheduleRoundCleanup(code);
       });
     }
   });
@@ -355,10 +363,69 @@ function endGroupRoundForAll(code) {
     status: 'ended',
     finishedAt: firebase.database.ServerValue.TIMESTAMP
   }).then(function() {
-    // Clean up after 5 minutes so spectators can still see final results
-    setTimeout(function() {
-      db.ref('activeRounds/' + code).remove().catch(function() {});
-    }, 300000);
+    scheduleRoundCleanup(code);
+  });
+}
+
+// How long a finished/ended round survives before its node is deleted. This is
+// also the window in which an accidental finish can still be undone, so it is
+// deliberately generous — the round code is separately reclaimed after 15 min
+// of inactivity, so holding the node this long costs nothing.
+var ROUND_CLEANUP_DELAY_MS = 900000; // 15 minutes
+
+// Schedule deletion of a finished round. Re-checks status at fire time: if the
+// host reopened the round in the meantime, the delete must not happen. (It is
+// a plain client-side timer, so it only fires if that browser stays on the
+// page at all — the status re-check makes both outcomes safe.)
+function scheduleRoundCleanup(code) {
+  setTimeout(function() {
+    db.ref('activeRounds/' + code + '/meta/status').once('value').then(function(snap) {
+      var st = snap.val();
+      if (st === 'ended' || st === 'finished') {
+        db.ref('activeRounds/' + code).remove().catch(function() {});
+      }
+    }).catch(function() {});
+  }, ROUND_CLEANUP_DELAY_MS);
+}
+
+// ==================== REOPEN — undo an accidental finish ====================
+// Finishing never destroys anything: scores, tracking and the player list in
+// activeRounds/{code} are untouched, only meta.status and the finishedPlayers
+// map change. So as long as the node still exists, reopening is lossless.
+
+// Host pulls ONE player back into a live round after they tapped Finish Round
+// by accident. Clearing their finishedPlayers flag is enough for the scorecard
+// to let them back in; if their finish was the one that tipped the whole round
+// to 'finished', put the round back to 'active' too.
+function reopenPlayerRound(code, uid) {
+  return db.ref('activeRounds/' + code).once('value').then(function(snap) {
+    if (!snap.exists()) return { ok: false, reason: 'gone' };
+    var meta = (snap.val() || {}).meta || {};
+    return db.ref('activeRounds/' + code + '/finishedPlayers/' + uid).remove().then(function() {
+      var update = { lastActivityAt: firebase.database.ServerValue.TIMESTAMP };
+      if (meta.status === 'finished' || meta.status === 'ended') {
+        update.status = 'active';
+        update.finishedAt = null;
+        update.reopenedAt = firebase.database.ServerValue.TIMESTAMP;
+      }
+      return db.ref('activeRounds/' + code + '/meta').update(update);
+    }).then(function() { return { ok: true }; });
+  });
+}
+
+// Host undoes an accidental "End Round for All". Every finished flag is cleared
+// so nobody is left locked out, and the round goes back to 'active'.
+function reopenGroupRound(code) {
+  return db.ref('activeRounds/' + code).once('value').then(function(snap) {
+    if (!snap.exists()) return { ok: false, reason: 'gone' };
+    return db.ref('activeRounds/' + code + '/finishedPlayers').remove().then(function() {
+      return db.ref('activeRounds/' + code + '/meta').update({
+        status: 'active',
+        finishedAt: null,
+        reopenedAt: firebase.database.ServerValue.TIMESTAMP,
+        lastActivityAt: firebase.database.ServerValue.TIMESTAMP
+      });
+    }).then(function() { return { ok: true }; });
   });
 }
 
@@ -537,7 +604,8 @@ function groupDataToRound(data, code) {
     _teamScores: data.teamScores || null,
     _teamHole: data.teamHole || null,
     _teamHoleConfirmed: data.teamHoleConfirmed || null,
-    _holeOverrides: meta.holeOverrides || null
+    _holeOverrides: meta.holeOverrides || null,
+    _nines: meta.nines || null
   };
 }
 
@@ -603,9 +671,7 @@ function endScrambleRound(code) {
     status: 'ended',
     finishedAt: firebase.database.ServerValue.TIMESTAMP
   }).then(function() {
-    setTimeout(function() {
-      db.ref('activeRounds/' + code).remove().catch(function() {});
-    }, 300000);
+    scheduleRoundCleanup(code);
   });
 }
 

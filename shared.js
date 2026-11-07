@@ -1,7 +1,7 @@
 // ==================== AUTO-UPDATE CHECK ====================
 // Forces a hard reload when a new version is deployed so users always
 // get fresh files. The popup is handled separately via checkUpdatePopup.
-var APP_VERSION = '206';
+var APP_VERSION = '211';
 (function() {
   var storedVersion = localStorage.getItem('app_version');
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -550,9 +550,256 @@ const COURSES = [
       { num:16, par:3, black:163, silver:148, gold:117, hcp:13 },
       { num:17, par:5, black:485, silver:429, gold:361, hcp:4  },
       { num:18, par:5, black:493, silver:474, gold:377, hcp:8  }
+    ]  },
+  {
+    id: 'lake-isle', name: 'Lake Isle Country Club',
+    address: '660 White Plains Road, Eastchester, NY 10709', phone: '(914) 961-3453', par: 70,
+    group: 'other',
+    link: 'https://www.lakeislecountryclub.com/golf.html',
+    overview: '',
+    tees: {
+      blue:  { label: 'Blue',  yards: 5835, rating: 68.8, slope: 119 },
+      white: { label: 'White', yards: 5770, rating: 68.5, slope: 116 },
+      gold:  { label: 'Gold',  yards: 4921, rating: 64.0, slope: 113 }
+    },
+    holes: [
+      { num:1,  par:4, blue:280, white:290, gold:262, hcp:13 },
+      { num:2,  par:4, blue:305, white:305, gold:293, hcp:11 },
+      { num:3,  par:3, blue:134, white:133, gold:116, hcp:17 },
+      { num:4,  par:4, blue:420, white:417, gold:360, hcp:1  },
+      { num:5,  par:4, blue:375, white:380, gold:325, hcp:7  },
+      { num:6,  par:4, blue:449, white:425, gold:355, hcp:3  },
+      { num:7,  par:3, blue:150, white:135, gold:110, hcp:15 },
+      { num:8,  par:5, blue:476, white:470, gold:375, hcp:5  },
+      { num:9,  par:3, blue:220, white:220, gold:150, hcp:9  },
+      { num:10, par:4, blue:291, white:285, gold:272, hcp:18 },
+      { num:11, par:3, blue:208, white:202, gold:170, hcp:8  },
+      { num:12, par:5, blue:450, white:460, gold:390, hcp:4  },
+      { num:13, par:4, blue:315, white:310, gold:260, hcp:12 },
+      { num:14, par:3, blue:200, white:192, gold:150, hcp:14 },
+      { num:15, par:4, blue:398, white:388, gold:374, hcp:6  },
+      { num:16, par:4, blue:396, white:390, gold:332, hcp:2  },
+      { num:17, par:5, blue:493, white:498, gold:405, hcp:10 },
+      { num:18, par:4, blue:275, white:270, gold:222, hcp:16 }
     ]
+  },
+  {
+    id: 'rotella', name: 'Philip J. Rotella',
+    address: '200 Thiells Mt Ivy Rd, Thiells, NY 10984', phone: '(845) 354-1616', par: 72,
+    group: 'other',
+    link: 'https://www.rotellagolfcourse.com/course/',
+    overview: '',
+    tees: {
+      blue:  { label: 'Blue',  yards: 6482, rating: 72.1, slope: 134 },
+      white: { label: 'White', yards: 6138, rating: 70.4, slope: 131 },
+      gold:  { label: 'Gold',  yards: 5516, rating: 67.9, slope: 124 },
+      red:   { label: 'Red',   yards: 4879, rating: 64.0, slope: 113 }
+    },
+    holes: [
+      { num:1,  par:4, blue:345, white:320, gold:310, red:285, hcp:17 },
+      { num:2,  par:4, blue:383, white:369, gold:300, red:281, hcp:7  },
+      { num:3,  par:3, blue:175, white:152, gold:135, red:125, hcp:13 },
+      { num:4,  par:4, blue:469, white:436, gold:390, red:376, hcp:3  },
+      { num:5,  par:3, blue:226, white:206, gold:172, red:160, hcp:11 },
+      { num:6,  par:5, blue:487, white:468, gold:417, red:329, hcp:1  },
+      { num:7,  par:4, blue:311, white:300, gold:291, red:140, hcp:9  },
+      { num:8,  par:3, blue:195, white:165, gold:141, red:130, hcp:15 },
+      { num:9,  par:5, blue:486, white:463, gold:435, red:360, hcp:5  },
+      { num:10, par:4, blue:339, white:316, gold:312, red:302, hcp:14 },
+      { num:11, par:5, blue:593, white:554, gold:469, red:425, hcp:2  },
+      { num:12, par:3, blue:197, white:177, gold:162, red:152, hcp:16 },
+      { num:13, par:5, blue:523, white:506, gold:476, red:417, hcp:8  },
+      { num:14, par:4, blue:353, white:353, gold:333, red:280, hcp:6  },
+      { num:15, par:4, blue:360, white:350, gold:318, red:282, hcp:12 },
+      { num:16, par:5, blue:550, white:523, gold:405, red:395, hcp:4  },
+      { num:17, par:3, blue:140, white:140, gold:125, red:120, hcp:18 },
+      { num:18, par:4, blue:350, white:340, gold:325, red:320, hcp:10 }
+    ]
+  },
+  {
+    // ==================== 27-HOLE COURSE ====================
+    // Three nines; any two make a round. `holes`/`par`/tee yards are filled in
+    // below from the default pairing (One + Two) so legacy code that reads
+    // course.holes keeps working. Rounds compose their own 18 via composeCourse().
+    // Per-nine hcp is 1-9 as printed; composeCourse maps front->odd, back->even.
+    // Tee rating/slope in each nine are the printed 9-hole values.
+    // Source: applegreens.com scorecard images (2023). Red 17 printed as 443 —
+    // impossible for a par 3 between 177 and 226; entered as 143.
+    id: 'apple-greens', name: 'Apple Greens',
+    address: '161 South St, Highland, NY 12528', phone: '(845) 883-5500', par: 71,
+    group: 'other',
+    link: 'https://applegreens.com/about-the-course/',
+    overview: '',
+    tees: {
+      blue:  { label: 'Blue'  },
+      white: { label: 'White' },
+      gold:  { label: 'Gold'  },
+      red:   { label: 'Red'   }
+    },
+    nineOrder: ['one', 'two', 'east'],
+    nines: {
+      one: {
+        label: 'Apple Greens One', short: 'One',
+        tees: { blue:{rating:36.0,slope:63}, white:{rating:35.0,slope:61}, gold:{rating:37.5,slope:64}, red:{rating:34.6,slope:63} },
+        holes: [
+          { par:4, blue:401, white:340, gold:310, red:295, hcp:6 },
+          { par:4, blue:360, white:350, gold:315, red:305, hcp:5 },
+          { par:3, blue:185, white:166, gold:126, red:108, hcp:8 },
+          { par:5, blue:610, white:540, gold:490, red:465, hcp:1 },
+          { par:3, blue:156, white:138, gold:122, red:101, hcp:9 },
+          { par:5, blue:538, white:511, gold:474, red:436, hcp:3 },
+          { par:4, blue:350, white:328, gold:291, red:257, hcp:7 },
+          { par:4, blue:364, white:358, gold:330, red:315, hcp:4 },
+          { par:4, blue:445, white:405, gold:315, red:302, hcp:2 }
+        ]
+      },
+      two: {
+        label: 'Apple Greens Two', short: 'Two',
+        tees: { blue:{rating:34.4,slope:61}, white:{rating:33.4,slope:59}, gold:{rating:34.2,slope:61}, red:{rating:33.0,slope:59} },
+        holes: [
+          { par:4, blue:310, white:283, gold:257, red:236, hcp:7 },
+          { par:3, blue:201, white:180, gold:160, red:133, hcp:9 },
+          { par:4, blue:341, white:331, gold:298, red:284, hcp:5 },
+          { par:4, blue:361, white:344, gold:308, red:264, hcp:8 },
+          { par:4, blue:411, white:365, gold:283, red:259, hcp:2 },
+          { par:4, blue:452, white:402, gold:365, red:342, hcp:1 },
+          { par:5, blue:510, white:490, gold:457, red:421, hcp:4 },
+          { par:3, blue:226, white:206, gold:177, red:143, hcp:3 },
+          { par:4, blue:355, white:343, gold:285, red:155, hcp:6 }
+        ]
+      },
+      east: {
+        label: 'Apple Greens East', short: 'East',
+        tees: { blue:{rating:36.0,slope:63}, white:{rating:35.0,slope:61}, gold:{rating:37.5,slope:64}, red:{rating:34.6,slope:63} },
+        holes: [
+          { par:4, blue:336, white:328, gold:285, red:255, hcp:6 },
+          { par:4, blue:387, white:375, gold:352, red:305, hcp:3 },
+          { par:4, blue:329, white:321, gold:295, red:258, hcp:5 },
+          { par:4, blue:436, white:422, gold:360, red:314, hcp:2 },
+          { par:5, blue:598, white:579, gold:436, red:401, hcp:1 },
+          { par:4, blue:291, white:280, gold:237, red:201, hcp:7 },
+          { par:4, blue:401, white:371, gold:316, red:260, hcp:4 },
+          { par:3, blue:210, white:195, gold:130, red:113, hcp:9 },
+          { par:3, blue:190, white:181, gold:152, red:120, hcp:8 }
+        ]
+      }
+    },
+    holes: []
   }
 ];
+
+// ==================== MULTI-NINE COURSES ====================
+// A course with `nines` has no fixed 18. composeCourse() builds a normal
+// 18-hole course CLONE from a front and back nine so every consumer that reads
+// course.holes / course.par / course.tees keeps working unchanged. Mirrors the
+// applyHoleOverrides() pattern: COURSES is never mutated per round.
+//
+// When only the front nine is known (the back nine is chosen at hole 10), the
+// clone is built with a placeholder back nine and `_backPending` is true so
+// the scorecard can ask before any hole-10+ par is shown or pre-filled.
+
+function nineOrderOf(course) {
+  return course.nineOrder || Object.keys(course.nines || {});
+}
+
+// Back-nine choices for a given front: every other nine (no repeats).
+function backNineOptions(course, frontKey) {
+  if (!course || !course.nines) return [];
+  return nineOrderOf(course).filter(function(k) { return k !== frontKey; }).map(function(k) {
+    var n = course.nines[k];
+    return { key: k, label: n.label, short: n.short || n.label,
+             par: n.holes.reduce(function(s, h) { return s + h.par; }, 0) };
+  });
+}
+
+function composeCourse(course, frontKey, backKey) {
+  if (!course || !course.nines) return course;
+  var order = nineOrderOf(course);
+  var front = (frontKey && course.nines[frontKey]) ? frontKey : order[0];
+  var backPending = false;
+  var back = backKey;
+  if (!back || !course.nines[back] || back === front) {
+    backPending = true;
+    back = order.filter(function(k) { return k !== front; })[0];
+  }
+  var fn = course.nines[front], bn = course.nines[back];
+  var holes = [];
+  fn.holes.forEach(function(h, i) {
+    var n = Object.assign({}, h); n.num = i + 1; n.hcp = (h.hcp || (i + 1)) * 2 - 1; n._nine = front; holes.push(n);
+  });
+  bn.holes.forEach(function(h, i) {
+    var n = Object.assign({}, h); n.num = i + 10; n.hcp = (h.hcp || (i + 1)) * 2; n._nine = back; holes.push(n);
+  });
+  var tees = {};
+  Object.keys(course.tees || {}).forEach(function(tk) {
+    var t = Object.assign({}, course.tees[tk]);
+    t.yards = holes.reduce(function(s, h) { return s + (h[tk] || 0); }, 0);
+    var fr = (fn.tees || {})[tk] || {}, br = (bn.tees || {})[tk] || {};
+    if (typeof fr.rating === 'number' && typeof br.rating === 'number') t.rating = Math.round((fr.rating + br.rating) * 10) / 10;
+    if (typeof fr.slope === 'number' && typeof br.slope === 'number') t.slope = Math.round((fr.slope + br.slope) / 2);
+    tees[tk] = t;
+  });
+  var c = Object.assign({}, course);
+  c.holes = holes;
+  c.tees = tees;
+  c.par = holes.reduce(function(s, h) { return s + h.par; }, 0);
+  c.nineFront = front;
+  c.nineBack = backPending ? null : back;
+  c._backPending = backPending;
+  c.nineLabel = (fn.short || fn.label) + ' / ' + (backPending ? '?' : (bn.short || bn.label));
+  return c;
+}
+
+// One call for every page that turns a saved/live round into a course:
+// compose the nines first (overrides are keyed by 18-hole index), then apply
+// any temporary-hole overrides.
+function resolveRoundCourse(courseId, nines, overrides) {
+  var c = getCourse(courseId);
+  if (!c) return c;
+  nines = nines || {};
+  c = composeCourse(c, nines.front, nines.back);
+  return applyHoleOverrides(c, overrides);
+}
+
+// Display name for a round: "Apple Greens (One / East)" for multi-nine
+// courses, the plain course name for everything else.
+function roundCourseName(course) {
+  if (!course) return 'Unknown Course';
+  return course.nines && course.nineLabel ? course.name + ' (' + course.nineLabel + ')' : course.name;
+}
+
+// Fill the default 18 (first two nines) into each multi-nine COURSES entry so
+// legacy readers of course.holes / course.par / course.tees[].yards work.
+(function() {
+  COURSES.forEach(function(c) {
+    if (!c.nines) return;
+    var order = nineOrderOf(c);
+    var d = composeCourse(c, order[0], order[1]);
+    c.holes = d.holes; c.par = d.par; c.tees = d.tees;
+  });
+})();
+
+// ---- Back-nine chooser UI (shared by scorecard solo/group/scramble) ----
+// The page defines window.chooseBackNine(key).
+function renderBackNineChooser(course, canChoose) {
+  var opts = backNineOptions(course, course.nineFront);
+  var html = '<div class="card" style="border-color:rgba(201,162,75,0.35);text-align:center;padding:18px 16px">';
+  html += '<div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:6px">Hole 10</div>';
+  if (canChoose) {
+    html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:20px;color:var(--text-bright,#fff);margin-bottom:4px">Which nine next?</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">You played <strong style="color:var(--text)">' + course.nines[course.nineFront].label + '</strong>. Pick the back nine &mdash; everyone in the round sees it instantly.</div>';
+    opts.forEach(function(o) {
+      html += '<button onclick="chooseBackNine(\'' + o.key + '\')" style="display:block;width:100%;padding:14px;margin-bottom:8px;background:rgba(201,162,75,0.10);border:1px solid rgba(201,162,75,0.45);border-radius:10px;color:var(--text-bright,#fff);font-size:16px;font-weight:700;cursor:pointer">' +
+              o.label + ' <span style="font-size:12px;font-weight:600;color:var(--text-muted)">&bull; Par ' + o.par + '</span></button>';
+    });
+  } else {
+    html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:20px;color:var(--text-bright,#fff);margin-bottom:4px">Waiting for the host</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">The host hasn&rsquo;t picked the back nine yet. This page updates on its own the moment they do.</div>';
+    html += '<div style="display:flex;justify-content:center"><span class="spinner" style="width:24px;height:24px;border-width:3px"></span></div>';
+  }
+  html += '</div>';
+  return html;
+}
 
 // ==================== ADMIN SYSTEM ====================
 var ADMIN_USERNAME = 'kohyo';
@@ -1600,9 +1847,31 @@ function renderActiveRoundBanner() {
         <span>Resume &rarr;</span>
       </a>
     `;
-  } else {
-    banner.innerHTML = '';
+    return;
   }
+
+  banner.innerHTML = '';
+
+  // Nothing stored locally — but the round may still be live on the server.
+  // This is the case for a player who was bounced out (they finished, or the
+  // host ended the round) and the host has since reopened it: their local
+  // active-group-code was cleared on the way out, so without this they would
+  // have no way back in short of typing the code again. Read-only: it does not
+  // re-arm active-group-code, so it can never leave a stale banner behind.
+  if (typeof findActiveRoundForUser !== 'function' || typeof getCurrentUser !== 'function') return;
+  const me = getCurrentUser();
+  if (!me) return;
+  findActiveRoundForUser(me.uid).then(function(found) {
+    if (!found) return;
+    const el = document.getElementById('activeRoundBanner');
+    if (!el || el.innerHTML !== '') return;
+    if (localStorage.getItem('active-group-code')) return;
+    el.innerHTML =
+      '<a href="scorecard.html?group=' + found.code + '" class="active-round-banner">' +
+        '<span>&#127948; Live Group Round [' + found.code + ']</span>' +
+        '<span>Rejoin &rarr;</span>' +
+      '</a>';
+  }).catch(function() {});
 }
 
 // ==================== PROFILE PICTURE ====================

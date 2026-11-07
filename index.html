@@ -47,7 +47,7 @@
 })();
 </script>
 <script>
-(function(){var v='206';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
+(function(){var v='211';var k='app_v';var s=localStorage.getItem(k);if(s&&s!==v){localStorage.setItem(k,v);window.location.replace(window.location.pathname+'?_='+Date.now());return;}localStorage.setItem(k,v);})();
 </script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -59,7 +59,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Golf Tracker</title>
-<link rel="stylesheet" href="shared.css?v=206">
+<link rel="stylesheet" href="shared.css?v=211">
 </head>
 <body>
 
@@ -67,7 +67,7 @@
 
 <div class="hero">
   <img src="images/golf-tracker-logo.png?v=2" alt="Golf Tracker" class="hero-logo-img" onerror="this.onerror=null;this.src='images/logo.svg'">
-  <p>6 Public Courses &bull; Live Scoring &bull; Stats</p>
+  <p id="heroTagline">14 Public Courses &bull; Live Scoring &bull; Stats</p>
 </div>
 
 <div id="broadcastBanner"></div>
@@ -98,6 +98,10 @@
       <select id="createCourseSelect" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);color:var(--text);font-size:14px;-webkit-appearance:none;appearance:none">
       </select>
     </div>
+    <div id="nineSection" style="display:none;margin-bottom:8px">
+      <select id="frontNineSelect" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);color:var(--text);font-size:14px;-webkit-appearance:none;appearance:none"></select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">27-hole course &mdash; you&rsquo;ll pick the back nine when you reach hole 10.</div>
+    </div>
     <div id="gameTypeSection" style="margin-bottom:8px"></div>
     <div style="margin-bottom:8px">
       <select id="startingHoleSelect" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);color:var(--text);font-size:14px;-webkit-appearance:none;appearance:none">
@@ -124,14 +128,23 @@
 
 <nav class="bottom-nav" id="bottomNav"></nav>
 
-<script src="firebase-config.js?v=206"></script>
-<script src="shared.js?v=206"></script>
-<script src="firebase-sync.js?v=206"></script>
+<script src="firebase-config.js?v=211"></script>
+<script src="shared.js?v=211"></script>
+<script src="firebase-sync.js?v=211"></script>
 <script>
   requireAuth(function(user) {
     renderBottomNav('courses');
     renderUserHeader(user);
     var __ha=document.getElementById('headerActions'); if(__ha) __ha.innerHTML='<span class="version-badge">V 2.0</span>';
+    // Course count is rendered from COURSES so the tagline can never go stale
+    // again the way the hardcoded "6" did.
+    (function() {
+      var tag = document.getElementById('heroTagline');
+      if (tag && typeof COURSES !== 'undefined' && COURSES.length) {
+        tag.innerHTML = COURSES.length + ' Public Courses &bull; Live Scoring &bull; Stats';
+      }
+    })();
+
     renderActiveRoundBanner();
     renderBroadcastBanner();
 
@@ -144,6 +157,27 @@
       COURSES.map(function(c) {
         return '<option value="' + c.id + '">' + c.name + ' (Par ' + c.par + ')</option>';
       }).join('');
+
+    // Multi-nine courses: show a front-nine picker once such a course is chosen
+    var nineSection = document.getElementById('nineSection');
+    var frontNineSelect = document.getElementById('frontNineSelect');
+    courseSelect.addEventListener('change', function() {
+      var c = getCourse(this.value);
+      if (c && c.nines) {
+        frontNineSelect.innerHTML = nineOrderOf(c).map(function(k) {
+          var n = c.nines[k];
+          var par = n.holes.reduce(function(s, h) { return s + h.par; }, 0);
+          return '<option value="' + k + '">Front Nine: ' + n.label + ' (Par ' + par + ')</option>';
+        }).join('');
+        nineSection.style.display = '';
+      } else {
+        nineSection.style.display = 'none';
+      }
+    });
+    function selectedNinesOpts(c) {
+      if (!c || !c.nines) return undefined;
+      return { nines: { front: frontNineSelect.value || nineOrderOf(c)[0] } };
+    }
 
     // Populate starting hole dropdown
     var startingHoleSelect = document.getElementById('startingHoleSelect');
@@ -318,7 +352,7 @@
         var gameTypeEl = document.getElementById('gameTypeSelect');
         var gameType = gameTypeEl ? gameTypeEl.value : 'standard';
 
-        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code, startingHole, gameType)
+        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code, startingHole, gameType, selectedNinesOpts(course))
           .then(function(createdCode) {
             clearTimeout(createTimeout);
             localStorage.setItem('active-group-code', createdCode);
@@ -342,7 +376,7 @@
         var gameTypeEl2 = document.getElementById('gameTypeSelect');
         var gameType2 = gameTypeEl2 ? gameTypeEl2.value : 'standard';
 
-        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code, startingHole, gameType2)
+        createGroupRoundWithCode(user.uid, displayName, course.id, teeKey, teeLabel, date, code, startingHole, gameType2, selectedNinesOpts(course))
           .then(function(createdCode) {
             localStorage.setItem('active-group-code', createdCode);
             window.location.href = 'scorecard.html?group=' + createdCode;
