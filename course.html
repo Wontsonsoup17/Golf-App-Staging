@@ -279,9 +279,9 @@
     };
 
     // Players (solo mode)
-    addPlayer(displayName);
-    document.getElementById('roundDate').value = new Date().toISOString().split('T')[0];
-
+    // NOTE: window.addPlayer must be assigned BEFORE the first call below. The
+    // old order called it first, threw ReferenceError, and silently killed the
+    // rest of this setup (toggle, start button, tee buttons all inert).
     window.addPlayer = function(name) {
       const c = document.getElementById('playerInputs');
       const idx = c.children.length;
@@ -293,6 +293,8 @@
       `;
       c.appendChild(row);
     };
+    addPlayer(displayName);
+    document.getElementById('roundDate').value = new Date().toISOString().split('T')[0];
 
     // Group play toggle
     window.toggleGroupMode = function() {
